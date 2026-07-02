@@ -680,4 +680,8 @@ body {
   font-weight: 900;
 }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.report-document { border-top: 3px solid var(--brand); }
+.report-letterhead { background: linear-gradient(180deg, rgba(15,118,110,.04), transparent); }
+.report-disclaimer { font-style: italic; }
 @media (max-width: 640px) { .form-grid-2 { grid-template-columns: 1fr; } }

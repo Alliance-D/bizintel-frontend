@@ -5,123 +5,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bell, Bookmark, CheckCircle2, ClipboardCheck, Download, FileText, GitCompare, MapPin, Plus, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
-import { compareLocations, generateReport, getAdminStatus, getAlerts, getMLOpportunityStatus, getModelStatus, getNotifications, getPlatformOpportunityGeoJson, getSavedLocations, submitValidationPoint, downloadReportPdf, deleteSavedLocation } from "@/lib/platform-api";
-
-type AnyObj = Record<string, any>;
-
-type Candidate = {
-  label: string;
-  latitude: number;
-  longitude: number;
-  opportunity_score: number;
-  demand_score: number;
-  access_score: number;
-  competition_pressure: number;
-  confidence_score: number;
-  recommendation: string;
-};
-
-function safeNumber(value: unknown, fallback = 0) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function clamp(value: number) {
-  return Math.max(0, Math.min(100, safeNumber(value)));
-}
-
-function PageHeader({ eyebrow, title, text, action }: { eyebrow: string; title: string; text: string; action?: React.ReactNode }) {
-  return (
-    <section className="mb-8">
-      <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <div className="kicker text-[var(--brand)]">{eyebrow}</div>
-          <h1 className="mt-4 max-w-5xl display-font text-5xl font-black leading-[0.95] tracking-[-0.06em] text-slate-950 md:text-6xl">{title}</h1>
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{text}</p>
-        </div>
-        {action}
-      </div>
-    </section>
-  );
-}
-
-function Progress({ value, tone = "green" }: { value: number; tone?: "green" | "blue" | "amber" }) {
-  const color = tone === "blue" ? "bg-[#0f766e]" : tone === "amber" ? "bg-amber-500" : "bg-emerald-600";
-  return <div className="h-2 w-full rounded-full bg-slate-100"><div className={`h-2 rounded-full ${color}`} style={{ width: `${clamp(value)}%` }} /></div>;
-}
-
-function StatusCard({ title, value, text }: { title: string; value: number | string; text: string }) {
-  const display = typeof value === "number" ? Math.round(safeNumber(value)) : (value ?? "Not available");
-  return <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm"><div className="text-sm font-extrabold text-slate-500">{title}</div><div className="mt-2 display-font text-3xl font-black text-slate-950">{display}</div><p className="mt-2 text-sm leading-6 text-slate-600">{text}</p></div>;
-}
-
-function InsightBlock({ title, text, icon: Icon }: { title: string; text: string; icon: any }) {
-  return <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5"><div className="flex gap-4"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[var(--brand)]"><Icon size={20}/></div><div><h3 className="font-black text-slate-950">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{text}</p></div></div></div>;
-}
-
-function useAsyncData<T>(loader: () => Promise<T>, deps: any[], fallback: T) {
-  const [data, setData] = useState<T>(fallback);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => { let active = true; setLoading(true); loader().then((value) => { if (active) setData(value); }).catch(() => {}).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return { data, loading };
-}
-
-function normaliseComparisonRows(data: AnyObj | null): Candidate[] {
-  const rows = data?.results || data?.locations || data?.comparison || [];
-  if (!Array.isArray(rows) || !rows.length) return [];
-  return rows.map((row: AnyObj, index: number) => ({
-    label: row.label || row.name || `Candidate ${index + 1}`,
-    latitude: safeNumber(row.latitude),
-    longitude: safeNumber(row.longitude),
-    opportunity_score: safeNumber(row.opportunity_score ?? row.score),
-    demand_score: safeNumber(row.demand_score),
-    access_score: safeNumber(row.access_score ?? row.accessibility_score),
-    competition_pressure: safeNumber(row.competition_pressure),
-    confidence_score: safeNumber(row.confidence_score),
-    recommendation: row.recommendation || row.decision_signal || "Compare this location with nearby alternatives before committing",
-  }));
-}
-
-function EmptyDataPanel({ title, text }: { title: string; text: string }) {
-  return <div className="empty-state-card"><strong>{title}</strong><span>{text}</span></div>;
-}
-
-function normaliseSavedLocation(item: AnyObj) {
-  const latitude = safeNumber(item.latitude);
-  const longitude = safeNumber(item.longitude);
-  return {
-    id: item.id != null ? String(item.id) : `${item.label || item.name || "location"}-${latitude}-${longitude}`,
-    label: item.label || item.name || "Saved location",
-    business_category: item.business_category || "pharmacy",
-    latitude,
-    longitude,
-    latest_opportunity_score: item.latest_opportunity_score ?? item.opportunity_score,
-    updated_at: item.updated_at || item.created_at,
-    notes: item.notes,
-  };
-}
-
-function locationQuery(location: ReturnType<typeof normaliseSavedLocation>) {
-  const params = new URLSearchParams({
-    saved: location.id,
-    label: location.label,
-    category: location.business_category,
-    lat: String(location.latitude),
-    lon: String(location.longitude),
-  });
-  return params.toString();
-}
-
-function candidateReportQuery(row: Candidate, category: string) {
-  const params = new URLSearchParams({
-    label: row.label,
-    category,
-    lat: String(row.latitude),
-    lon: String(row.longitude),
-  });
-  return params.toString();
-}
+import { BrandMark } from "@/components/layout/BrandMark";
+import { compareLocations, generateReport, getAlerts, getNotifications, getSavedLocations, submitValidationPoint, downloadReportPdf, deleteSavedLocation } from "@/lib/platform-api";
+import {
+  type AnyObj,
+  PageHeader,
+  Progress,
+  StatusCard,
+  InsightBlock,
+  useAsyncData,
+  normaliseComparisonRows,
+  EmptyDataPanel,
+  normaliseSavedLocation,
+  locationQuery,
+  candidateReportQuery,
+  safeNumber,
+} from "@/components/platform/pageHelpers";
 
 export function CompareLocationsPage() {
   const searchParams = useSearchParams();
@@ -361,43 +260,27 @@ export function ReportsPage() {
             {message && <p className="rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-700">{message}</p>}
           </div>
         </aside>
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="kicker text-[var(--brand)]">Report preview</div><h2 className="mt-2 display-font text-3xl font-black">{result?.title || title}</h2><p className="mt-3 max-w-4xl leading-7 text-slate-600">{summary}</p>
-          {result ? <>
-            <div className="mt-6 grid gap-4 md:grid-cols-3"><StatusCard title="Opportunity" value={score} text="Overall business fit signal"/><StatusCard title="Confidence" value={confidence} text="Data coverage and reliability"/><StatusCard title="Category" value={categoryLabel(category)} text="Business type being assessed"/></div>
-            {factors.length > 0 && <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><h3 className="font-black text-slate-950">Score breakdown</h3><div className="mt-4 grid gap-3 md:grid-cols-2">{factors.map((factor: AnyObj)=><div key={factor.key || factor.label} className="rounded-2xl bg-white p-4"><div className="flex items-center justify-between gap-3"><strong className="text-sm text-slate-900">{factor.label}</strong><span className="font-black text-emerald-700">{Math.round(safeNumber(factor.score))}</span></div><Progress value={safeNumber(factor.score)} tone={factor.key === "competition" ? "amber" : "green"}/></div>)}</div></div>}
-            <div className="mt-5 grid gap-4 md:grid-cols-2"><InsightBlock title="Recommended field checks" text="Confirm rent, visibility, foot traffic, safety, informal competitors and space availability" icon={ClipboardCheck}/><InsightBlock title="Decision use" text="Use this report to compare alternatives and discuss risk before paying a deposit" icon={FileText}/></div>
-            {(strengths.length > 0 || risks.length > 0) && <div className="mt-5 grid gap-4 md:grid-cols-2"><div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-5"><h3 className="font-black text-slate-950">Strengths</h3><ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">{(strengths.length ? strengths : ["This location has usable spatial signals for shortlisting."]).map((item: string)=><li key={item}>• {item}</li>)}</ul></div><div className="rounded-[1.5rem] border border-amber-100 bg-amber-50 p-5"><h3 className="font-black text-slate-950">Risks to verify</h3><ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">{(risks.length ? risks : ["Verify rent, informal competition and frontage before committing."]).map((item: string)=><li key={item}>• {item}</li>)}</ul></div></div>}
-            {checklist.length > 0 && <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-950">Field visit checklist</h3><div className="mt-3 grid gap-2">{checklist.map((item: string)=><div key={item} className="flex gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-700"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700"/> {item}</div>)}</div></div>}
-          </> : <EmptyDataPanel title="No report generated yet" text="Choose a saved location or enter coordinates to create a report." />}
+        <section className="report-document overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <header className="report-letterhead flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-6 py-5">
+            <BrandMark compact />
+            <div className="text-right text-xs font-bold text-slate-500">
+              <div>Preview generated {new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</div>
+              {result?.report_id != null && <div className="mt-0.5">Report reference #{result.report_id}</div>}
+            </div>
+          </header>
+          <div className="p-6">
+            <div className="kicker text-[var(--brand)]">Report preview</div><h2 className="mt-2 display-font text-3xl font-black">{result?.title || title}</h2><p className="mt-3 max-w-4xl leading-7 text-slate-600">{summary}</p>
+            {result ? <>
+              <div className="mt-6 grid gap-4 md:grid-cols-3"><StatusCard title="Opportunity" value={score} text="Overall business fit signal"/><StatusCard title="Confidence" value={confidence} text="Data coverage and reliability"/><StatusCard title="Category" value={categoryLabel(category)} text="Business type being assessed"/></div>
+              {factors.length > 0 && <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><h3 className="font-black text-slate-950">Score breakdown</h3><div className="mt-4 grid gap-3 md:grid-cols-2">{factors.map((factor: AnyObj)=><div key={factor.key || factor.label} className="rounded-2xl bg-white p-4"><div className="flex items-center justify-between gap-3"><strong className="text-sm text-slate-900">{factor.label}</strong><span className="font-black text-emerald-700">{Math.round(safeNumber(factor.score))}</span></div><Progress value={safeNumber(factor.score)} tone={factor.key === "competition" ? "amber" : "green"}/></div>)}</div></div>}
+              <div className="mt-5 grid gap-4 md:grid-cols-2"><InsightBlock title="Recommended field checks" text="Confirm rent, visibility, foot traffic, safety, informal competitors and space availability" icon={ClipboardCheck}/><InsightBlock title="Decision use" text="Use this report to compare alternatives and discuss risk before paying a deposit" icon={FileText}/></div>
+              {(strengths.length > 0 || risks.length > 0) && <div className="mt-5 grid gap-4 md:grid-cols-2"><div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-5"><h3 className="font-black text-slate-950">Strengths</h3><ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">{(strengths.length ? strengths : ["This location has usable spatial signals for shortlisting."]).map((item: string)=><li key={item}>• {item}</li>)}</ul></div><div className="rounded-[1.5rem] border border-amber-100 bg-amber-50 p-5"><h3 className="font-black text-slate-950">Risks to verify</h3><ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">{(risks.length ? risks : ["Verify rent, informal competition and frontage before committing."]).map((item: string)=><li key={item}>• {item}</li>)}</ul></div></div>}
+              {checklist.length > 0 && <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-950">Field visit checklist</h3><div className="mt-3 grid gap-2">{checklist.map((item: string)=><div key={item} className="flex gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-700"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700"/> {item}</div>)}</div></div>}
+              <p className="report-disclaimer mt-6 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">This report supports decision making. It is not a guarantee of revenue, profit, rent availability, regulatory approval or business success. Use it to shortlist, compare and prepare field checks before committing.</p>
+            </> : <EmptyDataPanel title="No report generated yet" text="Choose a saved location or enter coordinates to create a report." />}
+          </div>
         </section>
       </div>
-    </main>
-  );
-}
-
-export function InsightsPage() {
-  const [category, setCategory] = useState("pharmacy");
-  const { data: status } = useAsyncData(() => getMLOpportunityStatus(), [], null);
-  const { data } = useAsyncData(() => getPlatformOpportunityGeoJson(category, "opportunity", 2000), [category], null);
-  const features = Array.isArray((data as any)?.features) ? (data as any).features : [];
-  const scores = features.map((f: AnyObj) => safeNumber(f.properties?.opportunity_score)).filter((n: number) => n > 0);
-  const average = scores.length ? Math.round(scores.reduce((a: number,b: number)=>a+b,0) / scores.length) : 0;
-  const high = scores.filter((n: number)=>n >= 78).length;
-  const saturated = features.filter((f: AnyObj)=>safeNumber(f.properties?.competition_pressure) >= 78).length;
-  const lowSupply = features.filter((f: AnyObj)=>safeNumber(f.properties?.demand_score) >= 65 && safeNumber(f.properties?.competition_pressure) < 55).length;
-  const cards = [
-    { title: "Average opportunity", value: average || "No data", text: `Mean score across mapped ${categoryLabel(category).toLowerCase()} areas` },
-    { title: "High opportunity areas", value: high, text: "Areas worth shortlisting before field checks" },
-    { title: "Crowded areas", value: saturated, text: "Places where differentiation matters most" },
-    { title: "Low supply pockets", value: lowSupply, text: "Demand appears stronger than mapped same-category supply" },
-  ];
-  return (
-    <main className="app-container py-8 lg:py-12">
-      <PageHeader eyebrow="Insights" title="Understand the opportunity landscape" text="Insights are calculated from the current Kigali opportunity layer." action={<select value={category} onChange={(e)=>setCategory(e.target.value)} className="input-modern min-w-[230px] font-bold">{BUSINESS_CATEGORIES.map((item)=><option key={item.key} value={item.key}>{item.label}</option>)}</select>} />
-      <div className="real-data-note mb-5">Kigali intelligence is active for the selected business categories</div>
-      <div className="grid gap-4 md:grid-cols-4">{cards.map((card)=><StatusCard key={card.title} {...card}/>)}</div>
-      {features.length ? <div className="mt-6 grid gap-5 lg:grid-cols-2"><InsightBlock title="What to inspect first" text="Open high opportunity areas with manageable competition, then verify rent, visibility and informal competitors." icon={Sparkles}/><InsightBlock title="Validation philosophy" text="Public data gives a shortlist. Field checks decide whether a specific premises is practical." icon={ShieldCheck}/></div> : <div className="mt-6"><EmptyDataPanel title="Insights unavailable" text="Refresh the page or try again shortly." /></div>}
     </main>
   );
 }
