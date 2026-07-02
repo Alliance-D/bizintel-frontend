@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ReactNode, useMemo, useState } from "react";
-import { Bookmark, Building2, FileText, GitCompare, Lock, LogIn, Map, Menu, Search, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { Bookmark, FileText, GitCompare, LogIn, LogOut, Map, Menu, Search, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AUTH_CHANGED_EVENT, AuthUser, clearSession, getUser, hasAdminAccess } from "@/lib/auth";
+import { AuthModal } from "@/components/layout/AuthModal";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 const primaryNav = [
   { href: "/map", label: "Map", icon: Map },
   { href: "/compare", label: "Compare", icon: GitCompare },
   { href: "/insights", label: "Insights", icon: Search },
+  { href: "/advisor", label: "AI Advisor", icon: Sparkles },
   { href: "/saved", label: "Saved", icon: Bookmark },
   { href: "/reports", label: "Reports", icon: FileText },
 ];
@@ -21,55 +25,61 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function BrandMark({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#10231f] text-white shadow-sm">
-        <Building2 size={compact ? 19 : 21} />
-      </div>
-      {!compact && (
-        <div className="min-w-0 leading-tight">
-          <div className="display-font truncate text-xl font-black tracking-[-0.05em]">BizIntel</div>
-          <div className="hidden truncate text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 sm:block">Business opportunity intelligence</div>
-        </div>
-      )}
-    </div>
-  );
+function useAuthUser() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  useEffect(() => {
+    setUser(getUser());
+    const onChange = () => setUser(getUser());
+    window.addEventListener(AUTH_CHANGED_EVENT, onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+  return user;
 }
 
-function AuthModal({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<"signin" | "create">("signin");
+function AccountControl({ user, onSignInClick }: { user: AuthUser | null; onSignInClick: () => void }) {
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  if (!user) {
+    return (
+      <button onClick={onSignInClick} className="btn-primary px-4 py-2.5 text-sm">
+        <LogIn size={16} /> Sign in
+      </button>
+    );
+  }
+
+  function signOut() {
+    clearSession();
+    setMenuOpen(false);
+    router.push("/");
+  }
+
   return (
-    <div className="auth-modal-backdrop" onClick={onClose} role="presentation">
-      <section className="auth-modal" onClick={(event) => event.stopPropagation()} aria-label="Account access">
-        <button className="auth-close" onClick={onClose} aria-label="Close sign in"><X size={18} /></button>
-        <div className="auth-illustration" aria-hidden="true">
-          <div className="auth-mini-map">
-            {Array.from({ length: 64 }).map((_, index) => {
-              const row = Math.floor(index / 8);
-              const col = index % 8;
-              const distance = Math.abs(row - 4) + Math.abs(col - 4);
-              return <span key={index} className={distance < 2 ? "hot" : distance < 4 ? "warm" : "cool"} />;
-            })}
-          </div>
-          <div className="auth-score-card"><strong>76</strong><span>Promising</span></div>
+    <div className="relative">
+      <button onClick={() => setMenuOpen((open) => !open)} className="btn-secondary px-4 py-2.5 text-sm">
+        {user.full_name.split(" ")[0]}
+        {hasAdminAccess() && <ShieldCheck size={14} className="text-emerald-700" />}
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-[var(--line)] bg-white p-2 shadow-lg" onMouseLeave={() => setMenuOpen(false)}>
+          <div className="px-3 py-2 text-xs font-bold text-slate-500">{user.email}</div>
+          {hasAdminAccess() && (
+            <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              <ShieldCheck size={16} /> Admin dashboard
+            </Link>
+          )}
+          <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
+            Profile
+          </Link>
+          <button onClick={signOut} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50">
+            <LogOut size={16} /> Sign out
+          </button>
         </div>
-        <div className="auth-content">
-          <BrandMark />
-          <h2>{tab === "signin" ? "Welcome back" : "Create your account"}</h2>
-          <p>Save candidate locations, create reports, track changes and submit field checks from one workspace</p>
-          <div className="auth-tabs" role="tablist">
-            <button onClick={() => setTab("signin")} className={tab === "signin" ? "active" : ""}>Sign in</button>
-            <button onClick={() => setTab("create")} className={tab === "create" ? "active" : ""}>Create account</button>
-          </div>
-          <form className="auth-form">
-            {tab === "create" && <label>Full name<input className="input-modern" placeholder="Aline Uwase" /></label>}
-            <label>Email<input className="input-modern" placeholder="you@example.com" /></label>
-            <label>Password<input className="input-modern" type="password" placeholder="••••••••" /></label>
-            <button type="button" className="btn-primary w-full"><Lock size={16} /> {tab === "signin" ? "Sign in" : "Create account"}</button>
-          </form>
-        </div>
-      </section>
+      )}
     </div>
   );
 }
@@ -80,6 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [authOpen, setAuthOpen] = useState(false);
   const nav = useMemo(() => primaryNav, []);
   const showFooter = pathname === "/" || !appRoutesWithoutFooter.has(pathname);
+  const user = useAuthUser();
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
@@ -94,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex">
-            <button onClick={() => setAuthOpen(true)} className="btn-primary px-4 py-2.5 text-sm"><LogIn size={16} /> Sign in</button>
+            <AccountControl user={user} onSignInClick={() => setAuthOpen(true)} />
           </div>
 
           <button onClick={() => setOpen(true)} className="grid size-11 place-items-center rounded-2xl border border-[var(--line)] bg-white xl:hidden" aria-label="Open menu"><Menu /></button>
@@ -112,7 +123,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               {nav.map(({ href, label, icon: Icon }) => (
                 <Link key={href} href={href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black ${isActive(pathname, href) ? "bg-[#10231f] text-white" : "bg-slate-50 text-slate-700"}`}><Icon size={18} /> {label}</Link>
               ))}
-              <button onClick={() => { setOpen(false); setAuthOpen(true); }} className="mt-3 flex items-center gap-3 rounded-2xl bg-[#10231f] px-4 py-3 text-sm font-black text-white"><LogIn size={18} /> Sign in</button>
+              {user ? (
+                <>
+                  {hasAdminAccess() && (
+                    <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-700"><ShieldCheck size={18} /> Admin dashboard</Link>
+                  )}
+                  <button onClick={() => { clearSession(); setOpen(false); }} className="mt-3 flex items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-600"><LogOut size={18} /> Sign out</button>
+                </>
+              ) : (
+                <button onClick={() => { setOpen(false); setAuthOpen(true); }} className="mt-3 flex items-center gap-3 rounded-2xl bg-[#10231f] px-4 py-3 text-sm font-black text-white"><LogIn size={18} /> Sign in</button>
+              )}
             </nav>
           </div>
         </div>

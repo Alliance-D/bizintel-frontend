@@ -1,3 +1,5 @@
+import { authHeaders } from "@/lib/auth";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export type BusinessCategoryKey =
@@ -96,6 +98,7 @@ async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders(),
       ...(options?.headers || {}),
     },
     cache: "no-store",
@@ -219,4 +222,123 @@ export async function getMLOpportunityStatus() {
 
 export async function getMapQualitySummary() {
   return requestJson<any>(`/api/v1/platform/map-quality-summary`);
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export type AuthResponse = {
+  access_token: string;
+  token_type: string;
+  user: { id: number; full_name: string; email: string; role: string };
+};
+
+export async function login(email: string, password: string) {
+  return requestJson<AuthResponse>(`/api/v1/auth/login`, {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function register(fullName: string, email: string, password: string) {
+  return requestJson<AuthResponse>(`/api/v1/auth/register`, {
+    method: "POST",
+    body: JSON.stringify({ full_name: fullName, email, password }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// AI Business Advisor
+// ---------------------------------------------------------------------------
+
+export type AdvisorResponse = {
+  available: boolean;
+  message: string | null;
+  advice: string | null;
+  model?: string;
+};
+
+export async function getAdvisorStatus() {
+  return requestJson<{ available: boolean }>(`/api/v1/platform/advisor/status`);
+}
+
+export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number }) {
+  return requestJson<AdvisorResponse>(`/api/v1/platform/advisor`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Expansion Planner
+// ---------------------------------------------------------------------------
+
+export type ExpansionCandidate = {
+  grid_id: string;
+  latitude: number;
+  longitude: number;
+  opportunity_score: number;
+  demand_score: number;
+  accessibility_score: number;
+  commercial_activity_score: number;
+  competition_pressure: number;
+  confidence_score: number;
+  opportunity_type: string;
+  risk_level: string;
+  district: string;
+  sector: string;
+  distance_from_nearest_existing_m: number | null;
+};
+
+export async function planExpansion(payload: {
+  business_category: string;
+  existing_locations: Array<{ latitude: number; longitude: number }>;
+  limit?: number;
+  min_distance_from_existing_m?: number;
+}) {
+  return requestJson<{ candidates: ExpansionCandidate[]; excluded_near_existing: number; existing_location_count: number }>(
+    `/api/v1/platform/expansion-planner`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Admin console
+// ---------------------------------------------------------------------------
+
+export async function getDataHealth() {
+  return requestJson<any>(`/api/v1/admin/data-health`);
+}
+
+export async function getJobStatus() {
+  return requestJson<any>(`/api/v1/admin/jobs/status`);
+}
+
+export async function triggerRetrain(activate = true) {
+  return requestJson<any>(`/api/v1/admin/jobs/retrain?activate=${activate}`, { method: "POST" });
+}
+
+export async function triggerFeatureRebuild() {
+  return requestJson<any>(`/api/v1/admin/jobs/rebuild-features`, { method: "POST" });
+}
+
+export async function activateModelVersion(modelVersionId: number) {
+  return requestJson<any>(`/api/v1/admin/models/${modelVersionId}/activate`, { method: "POST" });
+}
+
+export async function getModelVersions() {
+  return requestJson<{ models: any[] }>(`/api/v1/models/versions`);
+}
+
+export async function getFeatureImportance() {
+  return requestJson<{ features: any[] }>(`/api/v1/models/feature-importance`);
+}
+
+export async function getDatasetCatalog() {
+  return requestJson<{ datasets: any[] }>(`/api/v1/datasets/catalog`);
+}
+
+export async function getAuditLog() {
+  return requestJson<{ events: any[] }>(`/api/v1/admin/security/audit-log`);
 }

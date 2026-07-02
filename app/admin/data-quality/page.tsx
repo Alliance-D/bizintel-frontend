@@ -58,7 +58,7 @@ export default function Page() {
             <h1 className="mt-4 max-w-5xl display-font text-5xl font-black leading-[0.95] tracking-[-0.06em] text-slate-950 md:text-6xl">Map quality review</h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">Review which analysis areas are ready for normal map display, which need manual review, and which are likely not suitable candidate areas.</p>
           </div>
-          <Link href="/admin/status" className="btn-secondary">System status</Link>
+          <Link href="/admin" className="btn-secondary">System dashboard</Link>
         </section>
 
         {loading && <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-sm font-bold text-slate-600">Loading map quality summary…</div>}
@@ -66,7 +66,7 @@ export default function Page() {
         {!loading && data?.status === "not_configured" && (
           <div className="rounded-[2rem] border border-amber-100 bg-amber-50 p-6 text-sm leading-7 text-amber-800">
             <strong>Quality screen not configured yet.</strong>
-            <p className="mt-2">Run <code>python scripts/phase36_audit_map_quality.py</code> from the project root, then restart the backend.</p>
+            <p className="mt-2">Run <code>python scripts/audit_map_quality.py</code> from the backend directory, then refresh this page.</p>
           </div>
         )}
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Bell, Bookmark, Building2, CheckCircle2, ClipboardCheck, Download, FileText, GitCompare, Lock, MapPin, Plus, ShieldCheck, Sparkles, Trash2, User, SearchCheck } from "lucide-react";
+import { Bell, Bookmark, CheckCircle2, ClipboardCheck, Download, FileText, GitCompare, MapPin, Plus, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
 import { compareLocations, generateReport, getAdminStatus, getAlerts, getMLOpportunityStatus, getModelStatus, getNotifications, getPlatformOpportunityGeoJson, getSavedLocations, submitValidationPoint, downloadReportPdf, deleteSavedLocation } from "@/lib/platform-api";
 
@@ -462,41 +462,13 @@ export function FieldValidationPageModern() {
   return <main className="app-container py-8 lg:py-12"><PageHeader eyebrow="Field checks" title="Verify what public data cannot see" text="Use field checks to validate informal competitors, visibility, foot traffic, rent signals and real business activity" /><div className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]"><aside className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-black">Submit field check</h2><div className="mt-4 space-y-3"><select className="input-modern" value={form.business_category} onChange={(e)=>setForm({...form,business_category:e.target.value})}>{BUSINESS_CATEGORIES.map((item)=><option key={item.key} value={item.key}>{item.label}</option>)}</select><input className="input-modern" value={form.latitude} onChange={(e)=>setForm({...form,latitude:e.target.value})}/><input className="input-modern" value={form.longitude} onChange={(e)=>setForm({...form,longitude:e.target.value})}/><div className="grid grid-cols-2 gap-3"><input className="input-modern" value={form.foot_traffic} onChange={(e)=>setForm({...form,foot_traffic:e.target.value})}/><input className="input-modern" value={form.visible_competitors} onChange={(e)=>setForm({...form,visible_competitors:e.target.value})}/></div><textarea className="input-modern min-h-[130px]" value={form.notes} onChange={(e)=>setForm({...form,notes:e.target.value})} placeholder="Notes from the field"/><button onClick={submit} className="btn-primary w-full"><ClipboardCheck size={16}/> Submit field check</button>{status && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{status}</p>}</div></aside><section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"><h2 className="display-font text-3xl font-black">What to verify</h2><div className="mt-6 grid gap-3">{["Visible informal competitors", "Actual foot traffic at different times", "Shop frontage, signage and visibility", "Rent availability and condition", "Safety, access and parking", "Whether the business category fits local behaviour"].map((item)=><div key={item} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 font-bold"><CheckCircle2 className="size-4 text-emerald-700"/>{item}</div>)}</div></section></div></main>;
 }
 
-export function ProfilePage() { return <main className="app-container py-12"><PageHeader eyebrow="Profile" title="Your workspace settings" text="Manage account details, saved preferences and notification settings" /><div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"><p className="text-slate-600">Profile settings will connect to authenticated accounts after the auth layer is enabled</p></div></main>; }
-
-export function AdminPageModern() {
-  const { data: admin } = useAsyncData(() => getAdminStatus(), [], null);
-  const { data: model } = useAsyncData(() => getModelStatus(), [], null);
-  const { data: ml } = useAsyncData(() => getMLOpportunityStatus(), [], null);
-  const readiness = ml?.readiness || {};
-  const categories = Array.isArray(ml?.prediction_summary_by_category) ? ml.prediction_summary_by_category : [];
-  const activeModel = model?.active_model || model?.model_name || model?.status || ml?.mode || "review";
+export function ProfilePage() {
   return (
     <main className="app-container py-12">
-      <PageHeader eyebrow="Admin" title="System status" text="Technical service, dataset and model monitoring for administrators. These diagnostics are intentionally separated from the user-facing product pages." action={<Link href="/admin/data-quality" className="btn-secondary"><SearchCheck size={16} /> Map quality</Link>} />
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatusCard title="Database" value={admin?.database || "ready"} text="Application database status" />
-        <StatusCard title="OSM POIs" value={readiness.osm_pois ?? "--"} text="Curated business and context points" />
-        <StatusCard title="Grid features" value={readiness.grid_features ?? "--"} text="Feature rows used by the opportunity engine" />
-        <StatusCard title="Predictions" value={readiness.predictions ?? "--"} text="Cached scored area-category records" />
-        <StatusCard title="Categories" value={readiness.active_categories ?? "--"} text="Business types currently available" />
-        <StatusCard title="Active model" value={activeModel} text="Current scoring service" />
-      </div>
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 p-5"><h2 className="text-xl font-black text-slate-950">Prediction summary by category</h2><p className="mt-2 text-sm text-slate-600">For admin review only. Public pages show clean product language instead of row counts and model details.</p></div>
-          {categories.length ? <table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500"><tr><th className="p-4">Category</th><th>Predictions</th><th>Average</th><th>Minimum</th><th>Maximum</th></tr></thead><tbody className="divide-y divide-slate-100">{categories.map((item: AnyObj)=><tr key={item.business_category || item.category}><td className="p-4 font-black text-slate-950">{categoryLabel(item.business_category || item.category)}</td><td>{safeNumber(item.predictions ?? item.count)}</td><td>{Math.round(safeNumber(item.avg_score ?? item.average_score ?? item.average_opportunity))}</td><td>{Math.round(safeNumber(item.min_score))}</td><td>{Math.round(safeNumber(item.max_score))}</td></tr>)}</tbody></table> : <div className="p-5"><EmptyDataPanel title="No category summary available" text="Run the scoring pipeline or refresh after the backend status endpoint is available." /></div>}
-        </section>
-        <aside className="space-y-5">
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-black">Admin verification</h2><div className="mt-4 grid gap-3 text-sm font-bold text-slate-600"><span className="rounded-2xl bg-slate-50 p-3">Health endpoint should return healthy database status.</span><span className="rounded-2xl bg-slate-50 p-3">Map endpoint should return GeoJSON features for each category.</span><span className="rounded-2xl bg-slate-50 p-3">Scout, compare, saved locations and reports should complete without server errors.</span></div></section>
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-black">User-facing rule</h2><p className="mt-2 text-sm leading-6 text-slate-600">Normal users should see business language such as opportunity, demand, access, competition, saved locations and reports. Technical words such as prediction rows, backend cache and model version should stay here.</p></section>
-        </aside>
+      <PageHeader eyebrow="Profile" title="Your workspace settings" text="Manage account details, saved preferences and notification settings" />
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-slate-600">Preferences and notification settings are coming soon. Your account is managed from the sign-in menu in the header.</p>
       </div>
     </main>
   );
-}
-
-export function LoginPageModern() {
-  const [tab, setTab] = useState<"signin" | "create">("signin");
-  return <main className="min-h-screen bg-slate-50"><div className="app-container grid min-h-[calc(100dvh-80px)] gap-10 py-14 lg:grid-cols-[.8fr_1fr] lg:items-center"><section><Link href="/" className="inline-flex items-center gap-3 font-black text-slate-950"><span className="grid size-10 place-items-center rounded-xl bg-[#10231f] text-white"><Building2 size={20}/></span> BizIntel</Link><h1 className="mt-12 display-font text-5xl font-black tracking-[-0.05em] text-slate-950">{tab === "signin" ? "Welcome back" : "Create your account"}</h1><p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">Sign in to save candidate locations, generate reports, track changes and submit field validation notes</p><ul className="mt-8 grid gap-3 text-sm font-bold text-slate-600"><li>Save unlimited locations and watchlists</li><li>Generate PDF location reports</li><li>Get alerts when scores shift</li><li>Submit field validation notes</li></ul></section><section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-lg shadow-slate-900/5"><div className="inline-flex rounded-xl bg-slate-100 p-1"><button onClick={()=>setTab("signin")} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === "signin" ? "bg-white shadow" : "text-slate-500"}`}>Sign in</button><button onClick={()=>setTab("create")} className={`rounded-lg px-4 py-2 text-sm font-bold ${tab === "create" ? "bg-white shadow" : "text-slate-500"}`}>Create account</button></div><div className="mt-7 grid gap-4">{tab === "create" && <label className="grid gap-2 text-sm font-bold text-slate-600">Full name<input className="input-modern" placeholder="e.g. Aline"/></label>}<label className="grid gap-2 text-sm font-bold text-slate-600">Email<input className="input-modern" placeholder="you@example.com"/></label><label className="grid gap-2 text-sm font-bold text-slate-600">Password<input className="input-modern" type="password" placeholder="••••••••"/></label><button className="btn-primary w-full"><Lock size={16}/> {tab === "signin" ? "Sign in" : "Create account"}</button><p className="text-sm leading-6 text-slate-500">Account access unlocks saved locations, reports, watchlists and field checks</p></div></section></div></main>;
 }
