@@ -148,7 +148,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">ML powered spatial business intelligence for urban microbusinesses in Kigali</p>
             </div>
             <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">Product</strong><Link href="/map">Map</Link><Link href="/compare">Compare</Link><Link href="/insights">Insights</Link></div>
-            <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">Workspace</strong><Link href="/saved">Saved</Link><Link href="/reports">Reports</Link><Link href="/field-validation">Field checks</Link></div>
+            <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">Workspace</strong><Link href="/saved">Saved</Link><Link href="/reports">Reports</Link><Link href="/expansion-planner">Expansion Planner</Link><Link href="/field-validation">Field checks</Link></div>
           </div>
         </footer>
       )}

@@ -25,10 +25,8 @@ import {
   getBestBusinessForArea,
   getCompetitionAnalysis,
   getPlatformOpportunityGeoJson,
-  getMLOpportunityStatus,
   saveLocation,
   type BusinessCategoryKey,
-  type OpportunityCell,
   type PlatformAssessment,
 } from "@/lib/platform-api";
 
@@ -148,10 +146,6 @@ const copyByMode: Record<Mode, { title: string; lead: string; nextMove: string; 
   },
 };
 
-const sectorNames = [
-  "Kimironko", "Remera", "Kacyiru", "Gisozi", "Nyarugenge", "Muhima", "Nyamirambo", "Kiyovu", "Kicukiro", "Gikondo", "Kagarama", "Kanombe", "Gatenga",
-];
-
 function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Number.isFinite(value) ? value : 0));
 }
@@ -172,156 +166,12 @@ function scoreClass(value: number) {
   return "score-risk";
 }
 
-function pseudoNoise(lat: number, lon: number, seed = 0) {
-  const x = Math.sin(lat * 92.13 + lon * 41.77 + seed * 11.31) * 10000;
-  return x - Math.floor(x);
-}
-
-function pointInPolygon(lon: number, lat: number, polygon: [number, number][]) {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
-    const xi = polygon[i][0], yi = polygon[i][1];
-    const xj = polygon[j][0], yj = polygon[j][1];
-    const intersect = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / ((yj - yi) || 1e-9) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-function districtFor(lat: number, lon: number) {
-  if (lon < 30.065 && lat < -1.925) return { district: "Nyarugenge", sector: lat < -1.975 ? "Nyamirambo" : lon < 29.98 ? "Kimisagara" : "Nyarugenge" };
-  if (lat > -1.955 || lon > 30.105) return { district: "Gasabo", sector: lon > 30.12 ? "Kimironko" : lat > -1.93 ? "Kacyiru" : "Remera" };
-  return { district: "Kicukiro", sector: lon > 30.13 ? "Kanombe" : lon > 30.09 ? "Kicukiro" : "Gikondo" };
-}
-
-function categoryBias(category: string) {
-  const weights: Record<string, { demand: number; access: number; commercial: number; competition: number }> = {
-    salon: { demand: 9, access: 4, commercial: 6, competition: 4 },
-    barbershop: { demand: 7, access: 5, commercial: 5, competition: 4 },
-    beauty_salon: { demand: 8, access: 4, commercial: 7, competition: 5 },
-    pharmacy: { demand: 6, access: 9, commercial: 4, competition: 3 },
-    cafe: { demand: 5, access: 6, commercial: 10, competition: 5 },
-    restaurant: { demand: 5, access: 7, commercial: 9, competition: 5 },
-    grocery: { demand: 10, access: 5, commercial: 4, competition: 2 },
-    retail: { demand: 6, access: 7, commercial: 7, competition: 4 },
-    mobile_money: { demand: 7, access: 8, commercial: 6, competition: 2 },
-  };
-  return weights[category] || weights.salon;
-}
-
 function opportunityType(opportunity: number, competition: number, demand: number, access: number) {
   if (demand > 78 && competition < 55) return "High demand with lower direct supply";
   if (competition > 78 && opportunity > 68) return "Strong demand but crowded";
   if (access > 78 && demand > 65) return "Accessible demand pocket";
   if (opportunity < 52) return "Needs stronger supporting signals";
   return "Worth comparing with nearby areas";
-}
-
-function createGridZones(category: string): Zone[] {
-  const zones: Zone[] = [];
-  const latStart = KIGALI_BOUNDS[0][1];
-  const latEnd = KIGALI_BOUNDS[1][1];
-  const lonStart = KIGALI_BOUNDS[0][0];
-  const lonEnd = KIGALI_BOUNDS[1][0];
-  const latStep = (HEX_RADIUS_KM * 1.5) / KM_PER_DEGREE_LAT;
-  const bias = categoryBias(category);
-  let index = 0;
-
-  for (let row = 0, lat = latStart; lat <= latEnd; row += 1, lat += latStep) {
-    const lonStep = (Math.sqrt(3) * HEX_RADIUS_KM) / (111.32 * Math.cos((lat * Math.PI) / 180));
-    const offset = row % 2 ? lonStep / 2 : 0;
-    for (let lon = lonStart + offset; lon <= lonEnd; lon += lonStep) {
-      if (!pointInPolygon(lon, lat, KIGALI_POLYGON)) continue;
-      const coreDistance = Math.hypot((lon - 30.0619) * 2.2, (lat + 1.9441) * 2.8);
-      const urbanCore = clamp(92 - coreDistance * 170, 22, 94);
-      const n1 = pseudoNoise(lat, lon, 1);
-      const n2 = pseudoNoise(lat, lon, 2);
-      const n3 = pseudoNoise(lat, lon, 3);
-      const n4 = pseudoNoise(lat, lon, 4);
-      const { district, sector } = districtFor(lat, lon);
-      const demand = clamp(urbanCore + n1 * 20 - 6 + bias.demand);
-      const access = clamp(urbanCore * 0.72 + n2 * 28 + bias.access + (lon > 30.0 && lon < 30.13 ? 7 : 0));
-      const commercial = clamp(urbanCore * 0.62 + n3 * 32 + bias.commercial + (district === "Nyarugenge" ? 6 : 0));
-      const competition = clamp(urbanCore * 0.55 + n4 * 35 + bias.competition + (sector === "Kimironko" || sector === "Nyarugenge" ? 12 : 0));
-      const confidence = clamp(52 + urbanCore * 0.32 + n2 * 18 + (district === "Gasabo" ? 6 : 2));
-      const opportunity = clamp(demand * 0.35 + access * 0.22 + commercial * 0.22 + confidence * 0.12 - competition * 0.16 + 12);
-      const type = opportunityType(opportunity, competition, demand, access);
-      zones.push({
-        id: `hex-${category}-${row}-${index}`,
-        area: `${sector} ${index % 3 === 0 ? "core" : index % 3 === 1 ? "access cell" : "neighbourhood cell"}`,
-        district,
-        sector,
-        category,
-        latitude: lat,
-        longitude: lon,
-        opportunity,
-        demand,
-        access,
-        commercial,
-        competition,
-        confidence,
-        type,
-        risk: competition > 76 ? "high" : opportunity >= 76 ? "low" : "medium",
-        population: Math.round(1200 + demand * 95 + n1 * 1800),
-        householdSignal: clamp(demand - 6 + n2 * 12),
-        spendingSignal: clamp(demand * 0.72 + commercial * 0.18 + n3 * 14),
-        roadSignal: clamp(access + n1 * 10 - 4),
-        transitSignal: clamp(access * 0.8 + commercial * 0.12 + n4 * 16),
-        anchorSignal: clamp(commercial + n2 * 11 - 5),
-        directSupply: Math.max(0, Math.round(competition / 12 + n4 * 4)),
-        underservedSignal: clamp(demand - competition + 45),
-        source: "grid",
-      });
-      index += 1;
-    }
-  }
-  return zones;
-}
-
-function normalizeCell(cell: OpportunityCell, category: string): Zone | null {
-  const latitude = Number(cell.latitude);
-  const longitude = Number(cell.longitude);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  const opportunity = clamp(Number(cell.opportunity_score ?? (cell as any).score ?? 0));
-  const demand = clamp(Number(cell.demand_score ?? Math.max(0, opportunity - 6)));
-  const access = clamp(Number(cell.accessibility_score ?? cell.access_score ?? Math.max(0, opportunity - 10)));
-  const commercial = clamp(Number(cell.commercial_activity_score ?? Math.max(0, opportunity - 12)));
-  const competition = clamp(Number(cell.competition_pressure ?? 52));
-  const confidence = clamp(Number(cell.confidence_score ?? 68));
-  return {
-    id: String(cell.grid_id || cell.id || `${latitude},${longitude}`),
-    area: cell.name || cell.area || cell.grid_id || "Opportunity cell",
-    district: cell.district || "Kigali",
-    sector: (cell as any).sector || undefined,
-    category,
-    latitude,
-    longitude,
-    opportunity,
-    demand,
-    access,
-    commercial,
-    competition,
-    confidence,
-    type: cell.opportunity_type || cell.experience_badge || opportunityType(opportunity, competition, demand, access),
-    risk: String(cell.risk_level || "medium"),
-    population: Math.round(1200 + demand * 95),
-    householdSignal: demand,
-    spendingSignal: clamp(demand * 0.72 + commercial * 0.18),
-    roadSignal: access,
-    transitSignal: clamp(access * 0.86),
-    anchorSignal: commercial,
-    directSupply: Math.max(0, Math.round(competition / 12)),
-    underservedSignal: clamp(demand - competition + 45),
-    source: "backend",
-  };
-}
-
-function mergeBackendCells(grid: Zone[], backendCells: Zone[]) {
-  if (!backendCells.length) return grid;
-  return grid.map((zone) => {
-    const match = backendCells.find((cell) => Math.hypot(cell.latitude - zone.latitude, cell.longitude - zone.longitude) < 0.015);
-    return match ? { ...zone, ...match, id: zone.id, latitude: zone.latitude, longitude: zone.longitude, area: match.area || zone.area, source: "backend-enhanced" } : zone;
-  });
 }
 
 function zoneFromAssessment(assessment: PlatformAssessment): Zone {
@@ -344,17 +194,6 @@ function zoneFromAssessment(assessment: PlatformAssessment): Zone {
     directSupply: Math.max(0, Math.round(clamp(Number(assessment.factors?.competition_pressure || 0)) / 12)),
     source: "assessment",
   };
-}
-
-function manualZone(lat: number, lon: number, category: string): Zone {
-  const { district, sector } = districtFor(lat, lon);
-  const demand = clamp(60 + pseudoNoise(lat, lon, 1) * 22);
-  const access = clamp(55 + pseudoNoise(lat, lon, 2) * 25);
-  const commercial = clamp(50 + pseudoNoise(lat, lon, 3) * 24);
-  const competition = clamp(40 + pseudoNoise(lat, lon, 4) * 34);
-  const confidence = 45;
-  const opportunity = clamp(demand * 0.35 + access * 0.22 + commercial * 0.22 + confidence * 0.12 - competition * 0.16 + 12);
-  return { id: "manual-selection", area: "Selected location", district, sector, category, latitude: lat, longitude: lon, opportunity, demand, access, commercial, competition, confidence, type: "Preliminary location screen", risk: "medium", population: Math.round(1200 + demand * 95), directSupply: Math.max(0, Math.round(competition / 12)), source: "local-estimate" };
 }
 
 function hexCoordinates(zone: Zone, radiusKm = HEX_RADIUS_KM): [number, number][] {
@@ -466,22 +305,6 @@ function lensInsight(zone: Zone, layer: LayerKey) {
   return { title: "Opportunity lens", body: `${zone.type}, demand ${Math.round(zone.demand)}, access ${Math.round(zone.access)}, saturation ${Math.round(zone.competition)}, confidence ${Math.round(zone.confidence)}`, value };
 }
 
-function popupHtml(zone: Zone, layer: LayerKey, mode: Mode) {
-  const insight = lensInsight(zone, layer);
-  const action = mode === "competitive" ? "Use this to judge whether differentiation can beat nearby supply" : "Use this to decide whether the cell should be shortlisted";
-  return `
-    <div style="padding:14px;min-width:280px;max-width:340px">
-      <div style="font-weight:900;font-size:15px;color:#0f172a;line-height:1.2">${zone.area}</div>
-      <div style="margin-top:4px;font-size:12px;font-weight:800;color:#64748b">${zone.district}${zone.sector ? ` · ${zone.sector}` : ""} · ${categoryLabel(zone.category)}</div>
-      <div style="margin-top:12px;border-radius:14px;background:#f8fafc;padding:10px">
-        <div style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#0f766e">${insight.title}</div>
-        <div style="margin-top:4px;font-size:24px;font-weight:900;color:#0f172a">${insight.value}</div>
-        <div style="margin-top:6px;font-size:12px;line-height:1.45;color:#475569">${insight.body}</div>
-      </div>
-      <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#334155"><b>${zone.type}</b><br/>${action}</div>
-    </div>`;
-}
-
 function MetricRow({ label, value, help, danger }: { label: string; value: number; help: string; danger?: boolean }) {
   const safe = clamp(value);
   return (
@@ -500,7 +323,6 @@ function EmptyState({ title, text }: { title: string; text: string }) {
 }
 
 function EmptyMapCallout({ mode }: { mode: Mode }) {
-  const copy = copyByMode[mode];
   return <div className="map-empty-callout"><Sparkles size={18} /><div><strong>{mode === "scout" ? "Place a candidate pin" : "Select an opportunity area"}</strong><span>{mode === "scout" ? "Click the exact place you want to assess" : "Review the score, save it, compare it, or create a report"}</span></div></div>;
 }
 
@@ -539,7 +361,6 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
   const [showGuide, setShowGuide] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
   const [dataSource, setDataSource] = useState<"loading" | "live" | "offline">("loading");
-  const [backendStatus, setBackendStatus] = useState<any | null>(null);
 
   const modeRef = useRef(mode);
   const categoryRef = useRef(category);
@@ -570,13 +391,9 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
     setLoading(true);
     setDataSource("loading");
     try {
-      const [response, status] = await Promise.all([
-        getPlatformOpportunityGeoJson(category, "opportunity", 5000),
-        getMLOpportunityStatus().catch(() => null),
-      ]);
+      const response = await getPlatformOpportunityGeoJson(category, "opportunity", 5000);
       const backend = (response.features || []).map((feature: any) => zoneFromGeoJsonFeature(feature, category)).filter(Boolean) as Zone[];
       if (!backend.length) throw new Error("No location features returned");
-      setBackendStatus(status);
       setZones(backend);
       setSelected(null);
       setDataSource("live");
@@ -801,7 +618,6 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
 
   const currentLens = activeLayer === "commercial" ? "Activity" : layerLabel(activeLayer);
   const selectedLensInsight = selectedZone ? lensInsight(selectedZone, activeLayer) : null;
-  const readiness = backendStatus?.readiness || {};
   const sourceLabel = dataSource === "live"
     ? "Kigali opportunity map"
     : dataSource === "loading"
@@ -920,8 +736,8 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
                 <div className="panel-title"><Crosshair size={17} /> Recommended next move</div>
                 <p>{assessment?.recommendation || copy.nextMove}</p>
                 <div className="next-actions">
-                  
                   <button disabled={working} onClick={saveCurrent} className="btn-primary"><Bookmark size={16} /> {working ? "Saving" : copy.primary}</button>
+                  <Link href={`/advisor?${selectedLocationParams()}`} className="btn-secondary"><Sparkles size={16} /> Ask advisor</Link>
                   <Link href={`/compare?${selectedLocationParams()}`} className="btn-secondary"><GitCompare size={16} /> Compare</Link>
                   <Link href={`/reports?${selectedLocationParams()}`} className="btn-secondary"><FileText size={16} /> Report</Link>
                 </div>
