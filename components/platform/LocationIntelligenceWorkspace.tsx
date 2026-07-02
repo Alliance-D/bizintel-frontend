@@ -10,7 +10,6 @@ import {
   Crosshair,
   FileText,
   GitCompare,
-  Layers3,
   LocateFixed,
   MapPin,
   Radar,
@@ -817,6 +816,11 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
         </div>
         <div className="workspace-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchArea(); }} placeholder="Search district, sector or cell" /></div>
         <select value={category} onChange={(event) => setCategory(event.target.value as BusinessCategoryKey)} className="workspace-select" aria-label="Business category">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>
+        {mode !== "scout" && (
+          <div className="workspace-layer-tabs" role="tablist" aria-label="Map lens">
+            {activeLensOptions.map((layer) => <button key={layer.key} role="tab" aria-selected={activeLayer === layer.key} title={layer.help} onClick={() => setActiveLayer(layer.key)} className={activeLayer === layer.key ? "layer-tab active" : "layer-tab"}>{layer.label}</button>)}
+          </div>
+        )}
         <button onClick={() => mapRef.current?.fitBounds(KIGALI_BOUNDS, { padding: { top: 40, bottom: 40, left: 330, right: 390 }, duration: 700 })} className="workspace-icon-button" aria-label="Recenter map"><LocateFixed size={18} /></button>
         <button onClick={loadZones} className="workspace-icon-button" aria-label="Refresh intelligence layer"><RefreshCw size={18} /></button>
       </section>
@@ -831,7 +835,7 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
           <div className={`map-coverage-badge ${dataSource === "live" ? "is-live" : dataSource === "offline" ? "is-offline" : ""}`}><span className="status-dot" /> {sourceLabel}{mode !== "scout" ? ` · ${currentLens}` : " · Place a pin"}</div>
         </div>
 
-        <aside className="workspace-left-panel floating-panel-left">
+        <aside className="workspace-left-panel">
           <div className="workspace-panel-card mode-card">
             <div className="kicker">{mode === "opportunity" ? "Opportunity map" : mode === "scout" ? "Scout mode" : "Competitive view"}</div>
             <h1>{copy.title}</h1>
@@ -844,14 +848,12 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
             <button type="button" onClick={() => { setGuideStep(0); setShowGuide(true); }} className="guide-link">Show quick guide</button>
           </div>
 
-          {mode !== "scout" && <div className="workspace-panel-card compact lens-card"><div className="panel-title"><Layers3 size={17} /> {mode === "competitive" ? "Competition lens" : "Opportunity lens"}</div><p>{mode === "competitive" ? "Switch views to separate crowded areas from underserved demand" : "Switch views to understand demand, access, activity, competition and confidence"}</p><div className="layer-grid">{activeLensOptions.map((layer) => <button key={layer.key} title={layer.help} onClick={() => setActiveLayer(layer.key)} className={activeLayer === layer.key ? "layer-chip active" : "layer-chip"}>{layer.label}</button>)}</div></div>}
-
           {mode === "scout" && <div className="workspace-panel-card compact scout-card"><div className="panel-title"><MapPin size={17} /> Scout checklist</div><p>Use this when you already have a candidate shop or rental space in mind</p><div className="mt-3 grid gap-2 text-sm font-bold text-slate-700"><span className="rounded-2xl bg-white p-3">Click the exact place on the map</span><span className="rounded-2xl bg-white p-3">Read the first screen in the insight panel</span><span className="rounded-2xl bg-white p-3">Save, compare, then field check</span></div></div>}
 
           {mode !== "scout" && <div className="workspace-panel-card priority-list"><div className="panel-title"><Sparkles size={17} /> Highlighted opportunity areas</div>{topZones.length ? <div className="zone-list">{topZones.map((zone, index) => <button key={zone.id} onClick={() => focusZone(zone)} className={selectedZone?.id === zone.id ? "zone-row active" : "zone-row"}><span className="zone-rank">{index + 1}</span><span className="zone-name"><strong>{zone.area}</strong><small>{zone.type}</small></span><span className="zone-score">{Math.round(zone.opportunity)}</span></button>)}</div> : <EmptyState title="Location layer unavailable" text="Try refreshing the page or selecting another business category." />}</div>}
         </aside>
 
-        <aside className={selectedZone ? "workspace-right-panel floating-panel-right" : "workspace-right-panel floating-panel-right panel-hidden"}>
+        <aside className={selectedZone ? "workspace-right-panel" : "workspace-right-panel panel-hidden"}>
           {selectedZone ? (
             <div className="insight-panel-card">
               <button type="button" onClick={closeInsightPanel} className="insight-close" aria-label="Close insight panel">

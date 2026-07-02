@@ -17,8 +17,8 @@ const primaryNav = [
   { href: "/reports", label: "Reports", icon: FileText },
 ];
 
-const mapRoutes = new Set(["/map", "/opportunity", "/scout", "/competitive", "/workspace"]);
-const appRoutesWithoutFooter = new Set(["/map", "/opportunity", "/scout", "/competitive", "/workspace"]);
+const mapRoutes = new Set(["/map", "/scout", "/competitive"]);
+const appRoutesWithoutFooter = mapRoutes;
 
 function isActive(pathname: string, href: string) {
   if (href === "/map") return mapRoutes.has(pathname);
