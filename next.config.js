@@ -1,17 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Render's free build container is capped at 512MB. These trade build
-  // speed for a lower, more predictable peak memory footprint so the build
-  // doesn't get SIGKILLed by the host mid-compile.
+  // The build now runs in GitHub Actions (generous free CPU/RAM), not on
+  // Render's constrained build container, so there is no need to force a
+  // slow single-threaded build anymore. standalone output matters for a
+  // different reason: it traces only the node_modules the app actually
+  // needs at runtime into .next/standalone, which keeps the final Docker
+  // image, and Render's runtime memory footprint, small.
+  output: "standalone",
   experimental: {
     webpackMemoryOptimizations: true,
-    // Force the static-generation worker pool to run serially instead of
-    // spawning one process per available core. --max-old-space-size on
-    // NODE_OPTIONS only caps a single process's V8 heap; it does nothing
-    // for the combined memory of several parallel workers, which is what
-    // was actually exceeding the container limit.
-    cpus: 1,
-    workerThreads: false,
   },
   productionBrowserSourceMaps: false,
 };
