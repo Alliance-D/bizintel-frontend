@@ -48,3 +48,12 @@ jobs:
             ${{ steps.image.outputs.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Render pulls whatever is tagged :latest on GHCR, but it does not poll
+      # the registry for changes, so without this, a new image just sits
+      # here unused until someone manually redeploys from the dashboard.
+      # Render's deploy hook is a plain POST URL, no payload needed. Skipped
+      # entirely (not failed) if the secret has not been added yet.
+      - name: Trigger Render deploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
