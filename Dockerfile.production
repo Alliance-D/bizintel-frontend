@@ -1,32 +1,11 @@
 # Production image, built in GitHub Actions and pushed to GHCR; Render just
 # pulls and runs it instead of building from source itself.
-#
-# Debian slim, not Alpine: npm ci was hanging for ~8 minutes on Alpine
-# (node:22-alpine) before crashing with npm's generic "Exit handler never
-# called!", identically whether run on Render's 512MB container or GitHub
-# Actions' 7GB runners, which rules out memory as the cause. Alpine uses musl
-# libc, and native packages like sharp (pulled in as an optional dependency
-# of next itself, for next/image, which this app does not use, but npm still
-# tries to install it) often lack prebuilt musl binaries, so npm falls back
-# to compiling from source, on an image with no build tools installed to do
-# that, and hangs. Debian has proper prebuilt glibc binaries for these, so
-# nothing needs to compile.
 FROM node:22-slim AS base
 
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Diagnostic: npm ci has been hanging ~8 minutes then dying with npm's
-# generic "Exit handler never called!" on every environment tried so far
-# (Render, Alpine, Debian, two Node versions), which rules out memory, libc,
-# and Node version as the cause. Shortening the fetch timeout forces
-# whatever is actually hanging to surface, fail, and retry quickly instead
-# of hanging silently for 8 minutes, and verbose logging shows what npm was
-# doing right before it happens instead of just the final crash message.
-RUN npm config set fetch-timeout 30000 \
-    && npm config set fetch-retry-mintimeout 10000 \
-    && npm config set fetch-retry-maxtimeout 30000 \
-    && npm ci --no-audit --no-fund --loglevel verbose
+RUN npm ci --no-audit --no-fund
 
 FROM base AS builder
 WORKDIR /app
