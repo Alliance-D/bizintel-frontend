@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Lock, X } from "lucide-react";
-import { login, register } from "@/lib/platform-api";
+import { login, register, extractApiErrorMessage } from "@/lib/platform-api";
 import { setSession } from "@/lib/auth";
 import { BrandMark } from "@/components/layout/BrandMark";
 
@@ -25,8 +25,9 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
       const response = tab === "signin" ? await login(email, password) : await register(fullName, email, password);
       setSession(response.access_token, response.user);
       onClose();
-    } catch {
-      setError(tab === "signin" ? "Incorrect email or password." : "Could not create an account with these details. The email may already be in use.");
+    } catch (err) {
+      const fallback = tab === "signin" ? "Incorrect email or password." : "Could not create an account with these details. The email may already be in use.";
+      setError(extractApiErrorMessage(err, fallback));
     } finally {
       setSubmitting(false);
     }

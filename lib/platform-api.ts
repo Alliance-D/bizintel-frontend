@@ -112,6 +112,17 @@ async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
+export function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error) || !error.message) return fallback;
+  try {
+    const parsed = JSON.parse(error.message);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+  } catch {
+    // response body wasn't JSON (e.g. a network-level or CORS failure)
+  }
+  return fallback;
+}
+
 export async function getPlatformOpportunityCells(category = "salon", district?: string, limit = 120) {
   const params = new URLSearchParams({ category, limit: String(limit) });
   if (district) params.set("district", district);
