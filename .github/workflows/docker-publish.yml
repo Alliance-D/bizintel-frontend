@@ -52,8 +52,16 @@ jobs:
       # Render pulls whatever is tagged :latest on GHCR, but it does not poll
       # the registry for changes, so without this, a new image just sits
       # here unused until someone manually redeploys from the dashboard.
-      # Render's deploy hook is a plain POST URL, no payload needed. Skipped
-      # entirely (not failed) if the secret has not been added yet.
+      # Render's deploy hook is a plain POST URL, no payload needed. The
+      # check for whether the secret is set happens in shell, not in `if:`,
+      # since referencing `secrets` directly in a step's `if:` condition is
+      # not permitted and fails the whole workflow before any step runs.
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$DEPLOY_HOOK_URL" ]; then
+            curl -fsS -X POST "$DEPLOY_HOOK_URL"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not set, skipping deploy trigger"
+          fi
