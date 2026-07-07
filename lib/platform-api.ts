@@ -63,6 +63,7 @@ export type AssessmentPayload = {
   longitude: number;
   business_category: string;
   radius_meters?: number;
+  locale?: string;
 };
 
 export type PlatformAssessment = {
@@ -129,8 +130,9 @@ export async function getPlatformOpportunityCells(category = "salon", district?:
   return requestJson<OpportunityCellsResponse>(`/api/v1/platform/opportunity-cells?${params.toString()}`);
 }
 
-export async function getPlatformOpportunityGeoJson(category = "pharmacy", layer = "opportunity", limit = 5000) {
+export async function getPlatformOpportunityGeoJson(category = "pharmacy", layer = "opportunity", limit = 5000, locale?: string) {
   const params = new URLSearchParams({ category, layer, limit: String(limit) });
+  if (locale) params.set("locale", locale);
   return requestJson<any>(`/api/v1/platform/opportunity-geojson?${params.toString()}`);
 }
 
@@ -149,7 +151,7 @@ export async function runCompetitiveAnalysis(payload: AssessmentPayload) {
   return getCompetitionAnalysis(payload.latitude, payload.longitude, payload.business_category);
 }
 
-export async function compareLocations(payload: { business_category: string; locations: Array<{ label?: string; latitude: number; longitude: number }> }) {
+export async function compareLocations(payload: { business_category: string; locations: Array<{ label?: string; latitude: number; longitude: number }>; locale?: string }) {
   return requestJson<any>(`/api/v1/compare/locations`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -274,7 +276,7 @@ export async function getAdvisorStatus() {
   return requestJson<{ available: boolean }>(`/api/v1/platform/advisor/status`);
 }
 
-export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number }) {
+export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number; locale?: string }) {
   return requestJson<AdvisorResponse>(`/api/v1/platform/advisor`, {
     method: "POST",
     body: JSON.stringify(payload),

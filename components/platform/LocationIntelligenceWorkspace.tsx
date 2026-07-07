@@ -29,6 +29,10 @@ import {
   type BusinessCategoryKey,
   type PlatformAssessment,
 } from "@/lib/platform-api";
+import { useLocale } from "@/lib/locale";
+import type { TranslationKey } from "@/lib/translations";
+
+type T = (key: TranslationKey) => string;
 
 type Mode = "opportunity" | "scout" | "competitive";
 type LayerKey = "opportunity" | "demand" | "competition" | "access" | "commercial" | "confidence";
@@ -97,54 +101,60 @@ const DISTRICT_GUIDES = {
   ],
 } as const;
 
-const modes: Array<{ key: Mode; label: string; icon: any }> = [
-  { key: "opportunity", label: "Opportunity", icon: Sparkles },
-  { key: "scout", label: "Scout", icon: MapPin },
-  { key: "competitive", label: "Competitive", icon: Radar },
-];
+function getModes(t: T): Array<{ key: Mode; label: string; icon: any }> {
+  return [
+    { key: "opportunity", label: t("mode_opportunity"), icon: Sparkles },
+    { key: "scout", label: t("mode_scout"), icon: MapPin },
+    { key: "competitive", label: t("mode_competitive"), icon: Radar },
+  ];
+}
 
-const lensByMode: Record<Exclude<Mode, "scout">, Array<{ key: LayerKey; label: string; help: string }>> = {
-  opportunity: [
-    { key: "opportunity", label: "Opportunity", help: "Overall fit from demand, access, activity, supply and reliability" },
-    { key: "demand", label: "Demand", help: "Population, household and spending pull" },
-    { key: "access", label: "Access", help: "Road, transport and movement convenience" },
-    { key: "commercial", label: "Activity", help: "Markets, services and nearby commercial anchors" },
-    { key: "confidence", label: "Confidence", help: "How reliable the available signals look" },
-  ],
-  competitive: [
-    { key: "competition", label: "Saturation", help: "Direct supply pressure for the selected business type" },
-    { key: "opportunity", label: "Opportunity", help: "Cells that still look useful after supply pressure" },
-    { key: "demand", label: "Demand", help: "Demand that can support more supply" },
-    { key: "confidence", label: "Confidence", help: "How reliable the competition view looks" },
-  ],
-};
+function getLensByMode(t: T): Record<Exclude<Mode, "scout">, Array<{ key: LayerKey; label: string; help: string }>> {
+  return {
+    opportunity: [
+      { key: "opportunity", label: t("lens_opportunity_label"), help: t("lens_opportunity_help") },
+      { key: "demand", label: t("lens_demand_label"), help: t("lens_demand_help") },
+      { key: "access", label: t("lens_access_label"), help: t("lens_access_help") },
+      { key: "commercial", label: t("lens_commercial_label"), help: t("lens_commercial_help") },
+      { key: "confidence", label: t("lens_confidence_label"), help: t("lens_confidence_help") },
+    ],
+    competitive: [
+      { key: "competition", label: t("lens_competition_label"), help: t("lens_competition_help") },
+      { key: "opportunity", label: t("lens_opportunity_label"), help: t("lens_opportunity_competitive_help") },
+      { key: "demand", label: t("lens_demand_label"), help: t("lens_demand_competitive_help") },
+      { key: "confidence", label: t("lens_confidence_label"), help: t("lens_confidence_competitive_help") },
+    ],
+  };
+}
 
-const copyByMode: Record<Mode, { title: string; lead: string; nextMove: string; primary: string; helper: string; callout: string }> = {
-  opportunity: {
-    title: "Find opportunity zones",
-    lead: "Scan Kigali for areas where demand, access, activity and supply conditions look promising",
-    nextMove: "Shortlist the strongest areas, compare at least two alternatives, then verify rent, visibility and informal competition in the field",
-    primary: "Save area",
-    helper: "Broad scan for where to look first",
-    callout: "Select an opportunity area",
-  },
-  scout: {
-    title: "Assess one candidate place",
-    lead: "Click the exact shop, road edge or rental space you are considering and get a first location screen",
-    nextMove: "Use this as a first screen, then confirm rent, visibility, foot traffic and informal competitors before committing",
-    primary: "Save location",
-    helper: "Exact place check after you already have a candidate",
-    callout: "Click the map to place a pin",
-  },
-  competitive: {
-    title: "Read competitive pressure",
-    lead: "Use the saturation view to see where direct supply is crowded and where lower-supply pockets remain",
-    nextMove: "High competition is only risky when demand, access or differentiation are weak",
-    primary: "Track competition",
-    helper: "Supply pressure view for competitive decisions",
-    callout: "Select a saturation cell",
-  },
-};
+function getCopyByMode(t: T): Record<Mode, { title: string; lead: string; nextMove: string; primary: string; helper: string; callout: string }> {
+  return {
+    opportunity: {
+      title: t("wm_opportunity_title"),
+      lead: t("wm_opportunity_lead"),
+      nextMove: t("wm_opportunity_next"),
+      primary: t("wm_opportunity_primary"),
+      helper: t("wm_opportunity_helper"),
+      callout: t("wm_opportunity_callout"),
+    },
+    scout: {
+      title: t("wm_scout_title"),
+      lead: t("wm_scout_lead"),
+      nextMove: t("wm_scout_next"),
+      primary: t("wm_scout_primary"),
+      helper: t("wm_scout_helper"),
+      callout: t("wm_scout_callout"),
+    },
+    competitive: {
+      title: t("wm_competitive_title"),
+      lead: t("wm_competitive_lead"),
+      nextMove: t("wm_competitive_next"),
+      primary: t("wm_competitive_primary"),
+      helper: t("wm_competitive_helper"),
+      callout: t("wm_competitive_callout"),
+    },
+  };
+}
 
 function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Number.isFinite(value) ? value : 0));
@@ -154,10 +164,10 @@ function metricValue(zone: Zone, layer: LayerKey) {
   return layer === "opportunity" ? zone.opportunity : zone[layer];
 }
 
-function scoreLabel(value: number) {
-  if (value >= 78) return "Strong";
-  if (value >= 60) return "Promising";
-  return "Needs checks";
+function scoreLabel(value: number, t: T) {
+  if (value >= 78) return t("score_strong");
+  if (value >= 60) return t("score_promising");
+  return t("score_needs_checks");
 }
 
 function scoreClass(value: number) {
@@ -166,19 +176,19 @@ function scoreClass(value: number) {
   return "score-risk";
 }
 
-function opportunityType(opportunity: number, competition: number, demand: number, access: number) {
-  if (demand > 78 && competition < 55) return "High demand with lower direct supply";
-  if (competition > 78 && opportunity > 68) return "Strong demand but crowded";
-  if (access > 78 && demand > 65) return "Accessible demand pocket";
-  if (opportunity < 52) return "Needs stronger supporting signals";
-  return "Worth comparing with nearby areas";
+function opportunityType(opportunity: number, competition: number, demand: number, access: number, t: T) {
+  if (demand > 78 && competition < 55) return t("opp_type_high_demand_lower_supply");
+  if (competition > 78 && opportunity > 68) return t("opp_type_strong_demand_crowded");
+  if (access > 78 && demand > 65) return t("opp_type_accessible_demand_pocket");
+  if (opportunity < 52) return t("opp_type_needs_stronger_signals");
+  return t("opp_type_worth_comparing");
 }
 
-function zoneFromAssessment(assessment: PlatformAssessment): Zone {
+function zoneFromAssessment(assessment: PlatformAssessment, t: T): Zone {
   return {
     id: "selected-location",
-    area: "Selected location",
-    district: "Kigali",
+    area: t("selected_location_area"),
+    district: t("kigali_label"),
     category: assessment.business_category,
     latitude: assessment.latitude,
     longitude: assessment.longitude,
@@ -188,7 +198,7 @@ function zoneFromAssessment(assessment: PlatformAssessment): Zone {
     commercial: clamp(Number(assessment.factors?.commercial_activity_score || 0)),
     competition: clamp(Number(assessment.factors?.competition_pressure || 0)),
     confidence: clamp(Number(assessment.overall?.confidence_score || 0)),
-    type: assessment.overall?.opportunity_type || "Location screen",
+    type: assessment.overall?.opportunity_type || t("location_screen"),
     risk: assessment.risk_notes?.length ? "medium" : "low",
     population: Math.round(1200 + clamp(Number(assessment.factors?.demand_score || 0)) * 95),
     directSupply: Math.max(0, Math.round(clamp(Number(assessment.factors?.competition_pressure || 0)) / 12)),
@@ -225,7 +235,7 @@ function toHexGeoJson(zones: Zone[], layer: LayerKey): FeatureCollection {
   };
 }
 
-function zoneFromGeoJsonFeature(feature: any, category: string): Zone | null {
+function zoneFromGeoJsonFeature(feature: any, category: string, t: T): Zone | null {
   const props = feature?.properties || {};
   const geometry = feature?.geometry as GeoJsonGeometry | undefined;
   const rawLat = props.latitude ?? props.lat;
@@ -249,10 +259,10 @@ function zoneFromGeoJsonFeature(feature: any, category: string): Zone | null {
   const commercial = clamp(Number(props.commercial_activity_score ?? props.commercial ?? props.activity ?? Math.max(0, opportunity - 12)));
   const competition = clamp(Number(props.competition_pressure ?? props.competition ?? 52));
   const confidence = clamp(Number(props.confidence_score ?? props.confidence ?? 68));
-  const district = String(props.district || "Kigali");
+  const district = String(props.district || t("kigali_label"));
   const sector = props.sector ? String(props.sector) : undefined;
   const cell = props.cell ? String(props.cell) : undefined;
-  const area = [sector, cell].filter(Boolean).join(" · ") || district || String(props.grid_id || "Opportunity cell");
+  const area = [sector, cell].filter(Boolean).join(" · ") || district || String(props.grid_id || t("opportunity_cell_fallback"));
   return {
     id: String(props.grid_id || props.id || `${latitude},${longitude}`),
     geometry,
@@ -268,7 +278,7 @@ function zoneFromGeoJsonFeature(feature: any, category: string): Zone | null {
     commercial,
     competition,
     confidence,
-    type: String(props.opportunity_type || props.zone_key || opportunityType(opportunity, competition, demand, access)),
+    type: String(props.opportunity_type || props.zone_key || opportunityType(opportunity, competition, demand, access, t)),
     risk: String(props.risk_level || "medium"),
     population: Math.round(1200 + demand * 95),
     householdSignal: demand,
@@ -291,18 +301,18 @@ function cellColor(layer: LayerKey): any {
   return ["interpolate", ["linear"], ["get", "opportunity"], 25, "#e2e8f0", 52, "#ccfbf1", 68, "#2dd4bf", 82, "#0f766e"];
 }
 
-function layerLabel(layer: LayerKey) {
-  return layer === "commercial" ? "Activity" : layer.charAt(0).toUpperCase() + layer.slice(1);
+function layerLabel(layer: LayerKey, t: T) {
+  return layer === "commercial" ? t("lens_commercial_label") : t(`lens_${layer}_label` as TranslationKey);
 }
 
-function lensInsight(zone: Zone, layer: LayerKey) {
+function lensInsight(zone: Zone, layer: LayerKey, t: T) {
   const value = Math.round(metricValue(zone, layer));
-  if (layer === "demand") return { title: "Demand lens", body: `Estimated population pull ${Math.round(zone.population || 0).toLocaleString()} people, household signal ${Math.round(zone.householdSignal || zone.demand)}, spending signal ${Math.round(zone.spendingSignal || zone.demand)}`, value };
-  if (layer === "competition") return { title: "Saturation lens", body: `Estimated direct supply ${zone.directSupply ?? Math.round(zone.competition / 12)} nearby businesses, underserved signal ${Math.round(zone.underservedSignal || 0)}, risk ${zone.competition > 75 ? "high" : zone.competition > 55 ? "moderate" : "lower"}`, value };
-  if (layer === "access") return { title: "Access lens", body: `Road convenience ${Math.round(zone.roadSignal || zone.access)}, transit signal ${Math.round(zone.transitSignal || zone.access)}, useful for businesses that depend on walk in movement`, value };
-  if (layer === "commercial") return { title: "Activity lens", body: `Commercial anchor signal ${Math.round(zone.anchorSignal || zone.commercial)}, nearby services and market activity look ${zone.commercial > 75 ? "strong" : zone.commercial > 55 ? "moderate" : "limited"}`, value };
-  if (layer === "confidence") return { title: "Confidence lens", body: `Data coverage looks ${zone.confidence > 75 ? "strong" : zone.confidence > 55 ? "usable" : "limited"}, field checks should focus on rent, visibility and informal competitors`, value };
-  return { title: "Opportunity lens", body: `${zone.type}, demand ${Math.round(zone.demand)}, access ${Math.round(zone.access)}, saturation ${Math.round(zone.competition)}, confidence ${Math.round(zone.confidence)}`, value };
+  if (layer === "demand") return { title: t("demand_lens_title"), body: `${t("lens_demand_help")}: ${Math.round(zone.population || 0).toLocaleString()} ${t("people_suffix")}, ${Math.round(zone.householdSignal || zone.demand)}/${Math.round(zone.spendingSignal || zone.demand)}`, value };
+  if (layer === "competition") return { title: t("saturation_lens_title"), body: `${zone.directSupply ?? Math.round(zone.competition / 12)} ${t("nearby_businesses_suffix")} · ${zone.competition > 75 ? t("risk_high") : zone.competition > 55 ? t("risk_moderate") : t("risk_lower")}`, value };
+  if (layer === "access") return { title: t("access_lens_title"), body: `${t("lens_access_help")}: ${Math.round(zone.roadSignal || zone.access)}/${Math.round(zone.transitSignal || zone.access)}`, value };
+  if (layer === "commercial") return { title: t("activity_lens_title"), body: `${t("lens_commercial_help")}: ${zone.commercial > 75 ? t("level_strong") : zone.commercial > 55 ? t("level_moderate") : t("level_limited")}`, value };
+  if (layer === "confidence") return { title: t("confidence_lens_title"), body: `${zone.confidence > 75 ? t("level_strong") : zone.confidence > 55 ? t("level_usable") : t("level_limited")}`, value };
+  return { title: t("opportunity_lens_title"), body: `${zone.type} · ${t("lens_demand_label")} ${Math.round(zone.demand)} · ${t("lens_access_label")} ${Math.round(zone.access)} · ${t("lens_competition_label")} ${Math.round(zone.competition)} · ${t("lens_confidence_label")} ${Math.round(zone.confidence)}`, value };
 }
 
 function MetricRow({ label, value, help, danger }: { label: string; value: number; help: string; danger?: boolean }) {
@@ -322,28 +332,29 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   return <div className="empty-state-card"><strong>{title}</strong><span>{text}</span></div>;
 }
 
-function EmptyMapCallout({ mode }: { mode: Mode }) {
-  return <div className="map-empty-callout"><Sparkles size={18} /><div><strong>{mode === "scout" ? "Place a candidate pin" : "Select an opportunity area"}</strong><span>{mode === "scout" ? "Click the exact place you want to assess" : "Review the score, save it, compare it, or create a report"}</span></div></div>;
+function EmptyMapCallout({ mode, t }: { mode: Mode; t: T }) {
+  return <div className="map-empty-callout"><Sparkles size={18} /><div><strong>{mode === "scout" ? t("place_candidate_pin") : t("select_opportunity_area")}</strong><span>{mode === "scout" ? t("click_exact_place") : t("review_score_action")}</span></div></div>;
 }
 
-function LayerLegend({ layer }: { layer: LayerKey }) {
+function LayerLegend({ layer, t }: { layer: LayerKey; t: T }) {
   const items: Record<LayerKey, Array<{ label: string; color: string }>> = {
-    opportunity: [{ label: "Needs checks", color: "#ccfbf1" }, { label: "Promising", color: "#2dd4bf" }, { label: "Strong", color: "#0f766e" }],
-    demand: [{ label: "Lower demand", color: "#dcfce7" }, { label: "Growing", color: "#22c55e" }, { label: "High demand", color: "#047857" }],
-    competition: [{ label: "Low supply", color: "#14b8a6" }, { label: "Balanced", color: "#f59e0b" }, { label: "Crowded", color: "#e11d48" }],
-    access: [{ label: "Limited", color: "#ecfdf5" }, { label: "Good", color: "#5eead4" }, { label: "Strong", color: "#0f766e" }],
-    commercial: [{ label: "Quiet", color: "#fef3c7" }, { label: "Active", color: "#f59e0b" }, { label: "Hub", color: "#b45309" }],
-    confidence: [{ label: "Limited", color: "#cbd5e1" }, { label: "Usable", color: "#99f6e4" }, { label: "Strong", color: "#0f766e" }],
+    opportunity: [{ label: t("legend_needs_checks"), color: "#ccfbf1" }, { label: t("legend_promising"), color: "#2dd4bf" }, { label: t("legend_strong"), color: "#0f766e" }],
+    demand: [{ label: t("legend_lower_demand"), color: "#dcfce7" }, { label: t("legend_growing"), color: "#22c55e" }, { label: t("legend_high_demand"), color: "#047857" }],
+    competition: [{ label: t("legend_low_supply"), color: "#14b8a6" }, { label: t("legend_balanced"), color: "#f59e0b" }, { label: t("legend_crowded"), color: "#e11d48" }],
+    access: [{ label: t("legend_limited"), color: "#ecfdf5" }, { label: t("legend_good"), color: "#5eead4" }, { label: t("legend_strong"), color: "#0f766e" }],
+    commercial: [{ label: t("legend_quiet"), color: "#fef3c7" }, { label: t("legend_active"), color: "#f59e0b" }, { label: t("legend_hub"), color: "#b45309" }],
+    confidence: [{ label: t("legend_limited"), color: "#cbd5e1" }, { label: t("legend_usable"), color: "#99f6e4" }, { label: t("legend_strong"), color: "#0f766e" }],
   };
-  return <div className="map-legend"><strong>{layerLabel(layer)} legend</strong><div>{items[layer].map((item) => <span key={item.label}><i style={{ background: item.color }} />{item.label}</span>)}</div></div>;
+  return <div className="map-legend"><strong>{layerLabel(layer, t)} {t("legend_suffix")}</strong><div>{items[layer].map((item) => <span key={item.label}><i style={{ background: item.color }} />{item.label}</span>)}</div></div>;
 }
 
-function propsToZone(props: any): Zone {
+function propsToZone(props: any, t: T): Zone {
   return {
-    id: String(props.id || props.grid_id), area: String(props.area || props.cell || props.sector || props.grid_id || "Opportunity cell"), district: String(props.district || "Kigali"), sector: props.sector ? String(props.sector) : undefined, category: String(props.category || props.business_category || "pharmacy"), latitude: Number(props.latitude), longitude: Number(props.longitude), opportunity: clamp(Number(props.opportunity)), demand: clamp(Number(props.demand)), access: clamp(Number(props.access)), commercial: clamp(Number(props.commercial)), competition: clamp(Number(props.competition)), confidence: clamp(Number(props.confidence)), type: String(props.type || props.opportunity_type || "Worth comparing"), risk: String(props.risk || props.risk_level || "medium"), population: Number(props.population || 0), householdSignal: Number(props.householdSignal || props.demand || 0), spendingSignal: Number(props.spendingSignal || props.demand || 0), roadSignal: Number(props.roadSignal || props.access || 0), transitSignal: Number(props.transitSignal || props.access || 0), anchorSignal: Number(props.anchorSignal || props.commercial || 0), directSupply: Number(props.directSupply || 0), underservedSignal: Number(props.underservedSignal || 0), source: String(props.source || "grid") };
+    id: String(props.id || props.grid_id), area: String(props.area || props.cell || props.sector || props.grid_id || t("opportunity_cell_fallback")), district: String(props.district || t("kigali_label")), sector: props.sector ? String(props.sector) : undefined, category: String(props.category || props.business_category || "pharmacy"), latitude: Number(props.latitude), longitude: Number(props.longitude), opportunity: clamp(Number(props.opportunity)), demand: clamp(Number(props.demand)), access: clamp(Number(props.access)), commercial: clamp(Number(props.commercial)), competition: clamp(Number(props.competition)), confidence: clamp(Number(props.confidence)), type: String(props.type || props.opportunity_type || t("opp_type_worth_comparing")), risk: String(props.risk || props.risk_level || "medium"), population: Number(props.population || 0), householdSignal: Number(props.householdSignal || props.demand || 0), spendingSignal: Number(props.spendingSignal || props.demand || 0), roadSignal: Number(props.roadSignal || props.access || 0), transitSignal: Number(props.transitSignal || props.access || 0), anchorSignal: Number(props.anchorSignal || props.commercial || 0), directSupply: Number(props.directSupply || 0), underservedSignal: Number(props.underservedSignal || 0), source: String(props.source || "grid") };
 }
 
 export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: Props) {
+  const { t, locale } = useLocale();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [category, setCategory] = useState<BusinessCategoryKey>("pharmacy");
   const [activeLayer, setActiveLayer] = useState<LayerKey>(initialMode === "competitive" ? "competition" : "opportunity");
@@ -365,49 +376,51 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
   const modeRef = useRef(mode);
   const categoryRef = useRef(category);
   const activeLayerRef = useRef(activeLayer);
+  const tRef = useRef(t);
+  const localeRef = useRef(locale);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
 
-  useEffect(() => { modeRef.current = mode; categoryRef.current = category; activeLayerRef.current = activeLayer; }, [mode, category, activeLayer]);
+  useEffect(() => { modeRef.current = mode; categoryRef.current = category; activeLayerRef.current = activeLayer; tRef.current = t; localeRef.current = locale; }, [mode, category, activeLayer, t, locale]);
 
   const gridZones = useMemo(() => zones.filter((zone) => zone.category === category && zone.source !== "assessment"), [zones, category]);
   const selectedZone = selected;
   const mapZones = useMemo(() => (mode === "scout" ? [] : gridZones), [gridZones, mode]);
   const topZones = useMemo(() => [...gridZones].sort((a, b) => b.opportunity - a.opportunity).slice(0, 9), [gridZones]);
   const mapData = useMemo(() => toHexGeoJson(mapZones, activeLayer), [mapZones, activeLayer]);
-  const copy = copyByMode[mode];
-  const activeLensOptions = mode === "competitive" ? lensByMode.competitive : lensByMode.opportunity;
+  const copy = useMemo(() => getCopyByMode(t)[mode], [t, mode]);
+  const activeLensOptions = useMemo(() => (mode === "competitive" ? getLensByMode(t).competitive : getLensByMode(t).opportunity), [t, mode]);
   const guideSteps = [
-    { title: "Choose a mode", body: "Opportunity scans Kigali areas, Scout checks one candidate pin, and Competitive explains saturation around a business type." },
-    { title: "Pick a business category", body: "The current real-data categories are Pharmacy, Restaurant, Cafe, Supermarket and Salon." },
-    { title: "Read the map lenses", body: "Switch between Opportunity, Demand, Access, Activity, Competition and Confidence to understand each area." },
-    { title: "Select an area", body: "Choose an area to open the right insight panel. The map zooms in and shows the latest location scores." },
-    { title: "Use Scout and compare", body: "Drop a pin to assess an exact rental location, then save it or compare it with other options before field checking." },
+    { title: t("guide_step1_title"), body: t("guide_step1_body") },
+    { title: t("guide_step2_title"), body: t("guide_step2_body") },
+    { title: t("guide_step3_title"), body: t("guide_step3_body") },
+    { title: t("guide_step4_title"), body: t("guide_step4_body") },
+    { title: t("guide_step5_title"), body: t("guide_step5_body") },
   ];
 
   const loadZones = useCallback(async () => {
     setLoading(true);
     setDataSource("loading");
     try {
-      const response = await getPlatformOpportunityGeoJson(category, "opportunity", 5000);
-      const backend = (response.features || []).map((feature: any) => zoneFromGeoJsonFeature(feature, category)).filter(Boolean) as Zone[];
+      const response = await getPlatformOpportunityGeoJson(category, "opportunity", 5000, locale);
+      const backend = (response.features || []).map((feature: any) => zoneFromGeoJsonFeature(feature, category, t)).filter(Boolean) as Zone[];
       if (!backend.length) throw new Error("No location features returned");
       setZones(backend);
       setSelected(null);
       setDataSource("live");
-      setNotice("Kigali location layer refreshed");
+      setNotice(t("layer_refreshed"));
       window.setTimeout(() => setNotice(null), 2600);
     } catch (error) {
       console.error("Could not load opportunity areas", error);
       setZones([]);
       setSelected(null);
       setDataSource("offline");
-      setNotice("Location intelligence is temporarily unavailable. Please try again shortly.");
+      setNotice(t("intelligence_temp_unavailable"));
       window.setTimeout(() => setNotice(null), 4600);
     } finally { setLoading(false); }
-  }, [category]);
+  }, [category, t, locale]);
 
   useEffect(() => { setMode(initialMode); setActiveLayer(initialMode === "competitive" ? "competition" : "opportunity"); }, [initialMode]);
   useEffect(() => { loadZones(); }, [loadZones]);
@@ -488,7 +501,7 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
       if (modeRef.current === "scout") return;
       const feature = event.features?.[0];
       if (!feature) return;
-      const zone = propsToZone(feature.properties as any);
+      const zone = propsToZone(feature.properties as any, tRef.current);
       setSelected(zone);
       setAssessment(null);
       if (map.getLayer("opportunity-cells-selected")) {
@@ -500,7 +513,7 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
       if (modeRef.current === "scout") return;
       const feature = event.features?.[0];
       if (!feature) return;
-      const zone = propsToZone(feature.properties as any);
+      const zone = propsToZone(feature.properties as any, tRef.current);
       map.flyTo({ center: [zone.longitude, zone.latitude], zoom: 14.8, duration: 720 });
     });
     map.on("click", async (event) => {
@@ -510,16 +523,16 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
       markerRef.current = new maplibregl.Marker({ color: "#10231f" }).setLngLat(event.lngLat).addTo(map);
       map.flyTo({ center: event.lngLat, zoom: 14.3, duration: 650 });
       try {
-        const result = await assessPlatformLocation({ latitude: event.lngLat.lat, longitude: event.lngLat.lng, business_category: categoryRef.current });
-        const zone = zoneFromAssessment(result);
+        const result = await assessPlatformLocation({ latitude: event.lngLat.lat, longitude: event.lngLat.lng, business_category: categoryRef.current, locale: localeRef.current });
+        const zone = zoneFromAssessment(result, tRef.current);
         setAssessment(result);
         setSelected(zone);
-        setNotice("Location screen created");
+        setNotice(tRef.current("location_screen_created"));
       } catch (error) {
         console.error("Scout assessment failed", error);
         setAssessment(null);
         setSelected(null);
-        setNotice("Assessment is temporarily unavailable. Please refresh or try again shortly.");
+        setNotice(tRef.current("assessment_temp_unavailable"));
       } finally {
         setWorking(false);
         window.setTimeout(() => setNotice(null), 3200);
@@ -572,9 +585,9 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
     const match = gridZones.find((zone) => [zone.area, zone.district, zone.sector, zone.type].filter(Boolean).join(" ").toLowerCase().includes(term));
     if (match) {
       focusZone(match);
-      setNotice(`Showing ${match.area}`);
+      setNotice(t("showing_area").replace("{area}", match.area));
     } else {
-      setNotice("No matching area found. Try a district, sector or cell name in Kigali.");
+      setNotice(t("no_matching_area"));
     }
     window.setTimeout(() => setNotice(null), 3200);
   }
@@ -611,18 +624,19 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
     setWorking(true);
     try {
       await saveLocation({ label: `${selectedZone.area} for ${categoryLabel(category)}`, business_category: category, latitude: selectedZone.latitude, longitude: selectedZone.longitude, notes: `${selectedZone.type}. Opportunity ${Math.round(selectedZone.opportunity)}, confidence ${Math.round(selectedZone.confidence)}` });
-      setNotice("Saved to your shortlist");
-    } catch { setNotice("Could not save yet"); }
+      setNotice(t("saved_to_shortlist"));
+    } catch { setNotice(t("could_not_save")); }
     finally { setWorking(false); window.setTimeout(() => setNotice(null), 3200); }
   }
 
-  const currentLens = activeLayer === "commercial" ? "Activity" : layerLabel(activeLayer);
-  const selectedLensInsight = selectedZone ? lensInsight(selectedZone, activeLayer) : null;
+  const currentLens = activeLayer === "commercial" ? t("lens_commercial_label") : layerLabel(activeLayer, t);
+  const selectedLensInsight = selectedZone ? lensInsight(selectedZone, activeLayer, t) : null;
   const sourceLabel = dataSource === "live"
-    ? "Kigali opportunity map"
+    ? t("kigali_opportunity_map")
     : dataSource === "loading"
-      ? "Preparing location intelligence"
-      : "Location intelligence unavailable";
+      ? t("loading_intelligence")
+      : t("intelligence_unavailable");
+  const modes = useMemo(() => getModes(t), [t]);
 
   return (
     <main className="workspace-root">
@@ -630,43 +644,43 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
         <div className="workspace-mode-tabs" role="tablist" aria-label="Workspace mode">
           {modes.map(({ key, label, icon: Icon }) => <button key={key} role="tab" aria-selected={mode === key} onClick={() => switchMode(key)} className={mode === key ? "mode-tab active" : "mode-tab"}><Icon size={16} /> <span>{label}</span></button>)}
         </div>
-        <div className="workspace-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchArea(); }} placeholder="Search district, sector or cell" /></div>
+        <div className="workspace-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchArea(); }} placeholder={t("search_placeholder")} /></div>
         <select value={category} onChange={(event) => setCategory(event.target.value as BusinessCategoryKey)} className="workspace-select" aria-label="Business category">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>
         {mode !== "scout" && (
           <div className="workspace-layer-tabs" role="tablist" aria-label="Map lens">
             {activeLensOptions.map((layer) => <button key={layer.key} role="tab" aria-selected={activeLayer === layer.key} title={layer.help} onClick={() => setActiveLayer(layer.key)} className={activeLayer === layer.key ? "layer-tab active" : "layer-tab"}>{layer.label}</button>)}
           </div>
         )}
-        <button onClick={() => mapRef.current?.fitBounds(KIGALI_BOUNDS, { padding: { top: 40, bottom: 40, left: 330, right: 390 }, duration: 700 })} className="workspace-icon-button" aria-label="Recenter map"><LocateFixed size={18} /></button>
-        <button onClick={loadZones} className="workspace-icon-button" aria-label="Refresh intelligence layer"><RefreshCw size={18} /></button>
+        <button onClick={() => mapRef.current?.fitBounds(KIGALI_BOUNDS, { padding: { top: 40, bottom: 40, left: 330, right: 390 }, duration: 700 })} className="workspace-icon-button" aria-label={t("recenter_map")}><LocateFixed size={18} /></button>
+        <button onClick={loadZones} className="workspace-icon-button" aria-label={t("refresh_layer")}><RefreshCw size={18} /></button>
       </section>
 
       <section className="workspace-grid">
         <div className="workspace-map-shell">
           <div ref={mapEl} className="workspace-map" />
-          {mapState === "failed" && <div className="map-fallback"><AlertCircle size={22} /><strong>Map tiles did not load</strong><span>Check your internet connection or map tile access</span></div>}
-          {(loading || mapState === "loading") && <div className="map-loading">Preparing map</div>}
-          <EmptyMapCallout mode={mode} />
-          {mode !== "scout" && <LayerLegend layer={activeLayer} />}
-          <div className={`map-coverage-badge ${dataSource === "live" ? "is-live" : dataSource === "offline" ? "is-offline" : ""}`}><span className="status-dot" /> {sourceLabel}{mode !== "scout" ? ` · ${currentLens}` : " · Place a pin"}</div>
+          {mapState === "failed" && <div className="map-fallback"><AlertCircle size={22} /><strong>{t("map_tiles_failed")}</strong><span>{t("map_tiles_failed_text")}</span></div>}
+          {(loading || mapState === "loading") && <div className="map-loading">{t("preparing_map")}</div>}
+          <EmptyMapCallout mode={mode} t={t} />
+          {mode !== "scout" && <LayerLegend layer={activeLayer} t={t} />}
+          <div className={`map-coverage-badge ${dataSource === "live" ? "is-live" : dataSource === "offline" ? "is-offline" : ""}`}><span className="status-dot" /> {sourceLabel}{mode !== "scout" ? ` · ${currentLens}` : ` · ${t("place_a_pin")}`}</div>
         </div>
 
         <aside className="workspace-left-panel">
           <div className="workspace-panel-card mode-card">
-            <div className="kicker">{mode === "opportunity" ? "Opportunity map" : mode === "scout" ? "Scout mode" : "Competitive view"}</div>
+            <div className="kicker">{mode === "opportunity" ? t("opportunity_map_kicker") : mode === "scout" ? t("scout_mode_kicker") : t("competitive_view_kicker")}</div>
             <h1>{copy.title}</h1>
             <p>{copy.lead}</p>
             <div className="coverage-summary"><ShieldCheck size={16} /> {copy.helper}</div>
             <div className={`data-source-card ${dataSource === "live" ? "live" : dataSource === "offline" ? "offline" : ""}`}>
-              <strong>{dataSource === "live" ? "Location intelligence ready" : dataSource === "offline" ? "Location intelligence unavailable" : "Loading intelligence"}</strong>
-              <span>{dataSource === "live" ? "Explore the map, select an area, or place a Scout pin." : "Please try again shortly."}</span>
+              <strong>{dataSource === "live" ? t("intelligence_ready") : dataSource === "offline" ? t("intelligence_unavailable") : t("loading_intelligence")}</strong>
+              <span>{dataSource === "live" ? t("explore_map_hint") : t("try_again_shortly")}</span>
             </div>
-            <button type="button" onClick={() => { setGuideStep(0); setShowGuide(true); }} className="guide-link">Show quick guide</button>
+            <button type="button" onClick={() => { setGuideStep(0); setShowGuide(true); }} className="guide-link">{t("show_quick_guide")}</button>
           </div>
 
-          {mode === "scout" && <div className="workspace-panel-card compact scout-card"><div className="panel-title"><MapPin size={17} /> Scout checklist</div><p>Use this when you already have a candidate shop or rental space in mind</p><div className="mt-3 grid gap-2 text-sm font-bold text-slate-700"><span className="rounded-2xl bg-white p-3">Click the exact place on the map</span><span className="rounded-2xl bg-white p-3">Read the first screen in the insight panel</span><span className="rounded-2xl bg-white p-3">Save, compare, then field check</span></div></div>}
+          {mode === "scout" && <div className="workspace-panel-card compact scout-card"><div className="panel-title"><MapPin size={17} /> {t("scout_checklist")}</div><p>{t("scout_checklist_text")}</p><div className="mt-3 grid gap-2 text-sm font-bold text-slate-700"><span className="rounded-2xl bg-white p-3">{t("scout_step_click")}</span><span className="rounded-2xl bg-white p-3">{t("scout_step_read")}</span><span className="rounded-2xl bg-white p-3">{t("scout_step_save")}</span></div></div>}
 
-          {mode !== "scout" && <div className="workspace-panel-card priority-list"><div className="panel-title"><Sparkles size={17} /> Highlighted opportunity areas</div>{topZones.length ? <div className="zone-list">{topZones.map((zone, index) => <button key={zone.id} onClick={() => focusZone(zone)} className={selectedZone?.id === zone.id ? "zone-row active" : "zone-row"}><span className="zone-rank">{index + 1}</span><span className="zone-name"><strong>{zone.area}</strong><small>{zone.type}</small></span><span className="zone-score">{Math.round(zone.opportunity)}</span></button>)}</div> : <EmptyState title="Location layer unavailable" text="Try refreshing the page or selecting another business category." />}</div>}
+          {mode !== "scout" && <div className="workspace-panel-card priority-list"><div className="panel-title"><Sparkles size={17} /> {t("highlighted_areas")}</div>{topZones.length ? <div className="zone-list">{topZones.map((zone, index) => <button key={zone.id} onClick={() => focusZone(zone)} className={selectedZone?.id === zone.id ? "zone-row active" : "zone-row"}><span className="zone-rank">{index + 1}</span><span className="zone-name"><strong>{zone.area}</strong><small>{zone.type}</small></span><span className="zone-score">{Math.round(zone.opportunity)}</span></button>)}</div> : <EmptyState title={t("location_layer_unavailable")} text={t("location_layer_unavailable_text")} />}</div>}
         </aside>
 
         <aside className={selectedZone ? "workspace-right-panel" : "workspace-right-panel panel-hidden"}>
@@ -677,16 +691,16 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
               </button>
               <div className="selected-header">
                 <div>
-                  <div className="kicker">{mode === "scout" ? "Selected place" : "Selected area"}</div>
+                  <div className="kicker">{mode === "scout" ? t("selected_place") : t("selected_area")}</div>
                   <h2>{selectedZone.area}</h2>
                   <p>{selectedZone.district}{selectedZone.sector ? ` · ${selectedZone.sector}` : ""} · {categoryLabel(category)}</p>
                 </div>
                 <div className={`score-badge ${scoreClass(selectedZone.opportunity)}`}>
                   <strong>{Math.round(selectedZone.opportunity)}</strong>
-                  <span>{scoreLabel(selectedZone.opportunity)}</span>
+                  <span>{scoreLabel(selectedZone.opportunity, t)}</span>
                 </div>
               </div>
-              <p className="selected-summary">{selectedZone.type}. Use this assessment to shortlist, compare and verify conditions on the ground</p>
+              <p className="selected-summary">{selectedZone.type}. {t("selected_summary_suffix")}</p>
               {selectedLensInsight && (
                 <div className="lens-detail-card">
                   <div className="kicker">{selectedLensInsight.title}</div>
@@ -695,30 +709,30 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
                 </div>
               )}
               <div className="metric-stack">
-                <MetricRow label="Demand" value={selectedZone.demand} help="Population, households and spending potential" />
-                <MetricRow label="Access" value={selectedZone.access} help="Roads, public transport and movement convenience" />
-                <MetricRow label="Activity" value={selectedZone.commercial} help="Markets, services and nearby anchors" />
-                <MetricRow label="Competition" value={selectedZone.competition} help="Category saturation and direct supply" danger />
-                <MetricRow label="Confidence" value={selectedZone.confidence} help="Reliability of available signals" />
+                <MetricRow label={t("demand_label")} value={selectedZone.demand} help={t("metric_demand_help")} />
+                <MetricRow label={t("access_label")} value={selectedZone.access} help={t("metric_access_help")} />
+                <MetricRow label={t("activity_label")} value={selectedZone.commercial} help={t("metric_activity_help")} />
+                <MetricRow label={t("competition_label")} value={selectedZone.competition} help={t("metric_competition_help")} danger />
+                <MetricRow label={t("confidence_label")} value={selectedZone.confidence} help={t("metric_confidence_help")} />
               </div>
               {(detailLoading || competitionDetails?.competitors || bestBusiness.length > 0) && (
                 <div className="real-context-stack">
-                  {detailLoading && <div className="mini-loading">Loading area context</div>}
+                  {detailLoading && <div className="mini-loading">{t("loading_area_context")}</div>}
                   {competitionDetails?.competitors && (
                     <div className="real-context-card">
-                      <div className="panel-title"><Radar size={17} /> Competition context</div>
+                      <div className="panel-title"><Radar size={17} /> {t("competition_context")}</div>
                       <div className="context-stat-grid">
-                        <span><strong>{Number(competitionDetails.competitors.within_300m || 0)}</strong><small>within 300m</small></span>
-                        <span><strong>{Number(competitionDetails.competitors.within_500m || 0)}</strong><small>within 500m</small></span>
-                        <span><strong>{Number(competitionDetails.competitors.within_1000m || 0)}</strong><small>within 1km</small></span>
+                        <span><strong>{Number(competitionDetails.competitors.within_300m || 0)}</strong><small>{t("within_300m")}</small></span>
+                        <span><strong>{Number(competitionDetails.competitors.within_500m || 0)}</strong><small>{t("within_500m")}</small></span>
+                        <span><strong>{Number(competitionDetails.competitors.within_1000m || 0)}</strong><small>{t("within_1km")}</small></span>
                       </div>
-                      {competitionDetails.competitors.nearest_competitor_m != null && <p>Nearest mapped competitor is about {Math.round(Number(competitionDetails.competitors.nearest_competitor_m))}m away.</p>}
-                      {!!competitionDetails.nearby_complementary_and_demand_generators?.length && <p>Nearby anchors: {competitionDetails.nearby_complementary_and_demand_generators.slice(0, 4).map((item: any) => `${categoryLabel(item.category_key)} (${item.count})`).join(", ")}</p>}
+                      {competitionDetails.competitors.nearest_competitor_m != null && <p>{t("nearest_competitor_text").replace("{distance}", String(Math.round(Number(competitionDetails.competitors.nearest_competitor_m))))}</p>}
+                      {!!competitionDetails.nearby_complementary_and_demand_generators?.length && <p>{t("nearby_anchors_text")}: {competitionDetails.nearby_complementary_and_demand_generators.slice(0, 4).map((item: any) => `${categoryLabel(item.category_key)} (${item.count})`).join(", ")}</p>}
                     </div>
                   )}
                   {bestBusiness.length > 0 && (
                     <div className="real-context-card">
-                      <div className="panel-title"><Sparkles size={17} /> Best business fit here</div>
+                      <div className="panel-title"><Sparkles size={17} /> {t("best_business_fit")}</div>
                       <div className="best-fit-list">
                         {bestBusiness.slice(0, 5).map((item: any, index: number) => (
                           <div key={item.business_category} className="best-fit-row">
@@ -733,13 +747,13 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
                 </div>
               )}
               <div className="next-move-card">
-                <div className="panel-title"><Crosshair size={17} /> Recommended next move</div>
+                <div className="panel-title"><Crosshair size={17} /> {t("recommended_next_move")}</div>
                 <p>{assessment?.recommendation || copy.nextMove}</p>
                 <div className="next-actions">
-                  <button disabled={working} onClick={saveCurrent} className="btn-primary"><Bookmark size={16} /> {working ? "Saving" : copy.primary}</button>
-                  <Link href={`/advisor?${selectedLocationParams()}`} className="btn-secondary"><Sparkles size={16} /> Ask advisor</Link>
-                  <Link href={`/compare?${selectedLocationParams()}`} className="btn-secondary"><GitCompare size={16} /> Compare</Link>
-                  <Link href={`/reports?${selectedLocationParams()}`} className="btn-secondary"><FileText size={16} /> Report</Link>
+                  <button disabled={working} onClick={saveCurrent} className="btn-primary"><Bookmark size={16} /> {working ? t("saving") : copy.primary}</button>
+                  <Link href={`/advisor?${selectedLocationParams()}`} className="btn-secondary"><Sparkles size={16} /> {t("ask_advisor")}</Link>
+                  <Link href={`/compare?${selectedLocationParams()}`} className="btn-secondary"><GitCompare size={16} /> {t("compare_action")}</Link>
+                  <Link href={`/reports?${selectedLocationParams()}`} className="btn-secondary"><FileText size={16} /> {t("report")}</Link>
                 </div>
               </div>
               {notice && <div className="notice-card"><CheckCircle2 size={16} /> {notice}</div>}
@@ -752,18 +766,18 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
         <div className="tour-backdrop" role="dialog" aria-modal="true" aria-label="BizIntel quick guide">
           <div className="tour-card">
             <button type="button" className="tour-close" onClick={completeGuide} aria-label="Close guide"><X size={18} /></button>
-            <div className="kicker">First-time guide</div>
+            <div className="kicker">{t("first_time_guide")}</div>
             <h2>{guideSteps[guideStep].title}</h2>
             <p>{guideSteps[guideStep].body}</p>
             <div className="tour-progress" aria-label={`Step ${guideStep + 1} of ${guideSteps.length}`}>
               {guideSteps.map((_, index) => <span key={index} className={index <= guideStep ? "active" : ""} />)}
             </div>
             <div className="tour-actions">
-              <button type="button" className="btn-secondary" onClick={() => setGuideStep(Math.max(0, guideStep - 1))} disabled={guideStep === 0}>Back</button>
+              <button type="button" className="btn-secondary" onClick={() => setGuideStep(Math.max(0, guideStep - 1))} disabled={guideStep === 0}>{t("guide_back")}</button>
               {guideStep < guideSteps.length - 1 ? (
-                <button type="button" className="btn-primary" onClick={() => setGuideStep(guideStep + 1)}>Next</button>
+                <button type="button" className="btn-primary" onClick={() => setGuideStep(guideStep + 1)}>{t("guide_next")}</button>
               ) : (
-                <button type="button" className="btn-primary" onClick={completeGuide}>Done</button>
+                <button type="button" className="btn-primary" onClick={completeGuide}>{t("guide_done")}</button>
               )}
             </div>
           </div>

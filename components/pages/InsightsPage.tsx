@@ -6,6 +6,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
 import { getPlatformOpportunityGeoJson } from "@/lib/platform-api";
 import { type AnyObj, PageHeader, StatusCard, InsightBlock, useAsyncData, EmptyDataPanel, safeNumber } from "@/components/platform/pageHelpers";
+import { useLocale } from "@/lib/locale";
 
 const SCORE_BUCKETS = [
   { label: "0-20", min: 0, max: 20 },
@@ -36,8 +37,9 @@ function ChartCard({ title, help, children }: { title: string; help: string; chi
 const chartTooltipStyle = { borderRadius: 14, border: "1px solid #e6e0d5", fontSize: 12, fontWeight: 700 };
 
 export function InsightsPage() {
+  const { t, locale } = useLocale();
   const [category, setCategory] = useState("pharmacy");
-  const { data, loading } = useAsyncData(() => getPlatformOpportunityGeoJson(category, "opportunity", 3000), [category], null);
+  const { data, loading } = useAsyncData(() => getPlatformOpportunityGeoJson(category, "opportunity", 3000, locale), [category, locale], null);
   const features: AnyObj[] = Array.isArray((data as any)?.features) ? (data as any).features : [];
 
   const scores = features.map((f) => safeNumber(f.properties?.opportunity_score)).filter((n) => n > 0);
@@ -46,10 +48,10 @@ export function InsightsPage() {
   const saturated = features.filter((f) => safeNumber(f.properties?.competition_pressure) >= 78).length;
   const lowSupply = features.filter((f) => safeNumber(f.properties?.demand_score) >= 65 && safeNumber(f.properties?.competition_pressure) < 55).length;
   const cards = [
-    { title: "Average opportunity", value: average || "No data", text: `Mean score across mapped ${categoryLabel(category).toLowerCase()} areas` },
-    { title: "High opportunity areas", value: high, text: "Areas worth shortlisting before field checks" },
-    { title: "Crowded areas", value: saturated, text: "Places where differentiation matters most" },
-    { title: "Low supply pockets", value: lowSupply, text: "Demand appears stronger than mapped same-category supply" },
+    { title: t("avg_opportunity"), value: average || t("no_data"), text: t("mean_score_areas").replace("{category}", categoryLabel(category).toLowerCase()) },
+    { title: t("high_opportunity_areas"), value: high, text: t("high_opportunity_areas_text") },
+    { title: t("crowded_areas"), value: saturated, text: t("crowded_areas_text") },
+    { title: t("low_supply_pockets"), value: lowSupply, text: t("low_supply_pockets_text") },
   ];
 
   const distribution = useMemo(() => SCORE_BUCKETS.map((bucket) => ({
@@ -58,12 +60,13 @@ export function InsightsPage() {
   })), [scores]);
 
   const factorBreakdown = useMemo(() => [
-    { label: "Demand", value: factorAverage(features, "demand_score") },
-    { label: "Access", value: factorAverage(features, "accessibility_score") },
-    { label: "Activity", value: factorAverage(features, "commercial_activity_score") },
-    { label: "Competition", value: factorAverage(features, "competition_pressure") },
-    { label: "Confidence", value: factorAverage(features, "confidence_score") },
-  ], [features]);
+    { label: t("demand_label"), value: factorAverage(features, "demand_score") },
+    { label: t("access_label"), value: factorAverage(features, "accessibility_score") },
+    { label: t("activity_label"), value: factorAverage(features, "commercial_activity_score") },
+    { label: t("competition_label"), value: factorAverage(features, "competition_pressure") },
+    { label: t("confidence_label"), value: factorAverage(features, "confidence_score") },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [features, t]);
 
   const districtBreakdown = useMemo(() => {
     const byDistrict = new Map<string, { total: number; count: number }>();
@@ -82,26 +85,26 @@ export function InsightsPage() {
   return (
     <main className="app-container py-8 lg:py-12">
       <PageHeader
-        eyebrow="Insights"
-        title="Understand the opportunity landscape"
-        text="Charts are calculated live from the current Kigali opportunity layer for the selected business category."
+        eyebrow={t("insights_eyebrow")}
+        title={t("insights_title")}
+        text={t("insights_text")}
         action={<select value={category} onChange={(e) => setCategory(e.target.value)} className="input-modern min-w-[230px] font-bold">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>}
       />
-      <div className="real-data-note mb-5">Kigali intelligence is active for the selected business category</div>
+      <div className="real-data-note mb-5">{t("kigali_intelligence_active")}</div>
       <div className="grid gap-4 md:grid-cols-4">{cards.map((card) => <StatusCard key={card.title} {...card} />)}</div>
 
       {loading && !features.length ? (
-        <div className="mt-6"><EmptyDataPanel title="Loading insights" text="Calculating charts from the live opportunity layer." /></div>
+        <div className="mt-6"><EmptyDataPanel title={t("loading_insights")} text={t("loading_insights_text")} /></div>
       ) : features.length ? (
         <>
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <ChartCard title="Score distribution" help="How many mapped areas fall into each opportunity band">
+            <ChartCard title={t("score_distribution")} help={t("score_distribution_help")}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distribution} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee5d8" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any) => [`${value} areas`, "Count"]} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any) => [`${value} ${t("areas_suffix")}`, t("count_label")]} />
                   <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                     {distribution.map((entry, index) => <Cell key={entry.label} fill={BUCKET_COLORS[index]} />)}
                   </Bar>
@@ -109,13 +112,13 @@ export function InsightsPage() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="What drives the score" help={`Average factor signal across mapped ${categoryLabel(category).toLowerCase()} areas`}>
+            <ChartCard title={t("what_drives_score")} help={t("what_drives_score_help").replace("{category}", categoryLabel(category).toLowerCase())}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={factorBreakdown} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee5d8" horizontal={false} />
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="label" width={84} tick={{ fontSize: 12, fontWeight: 800, fill: "#0f172a" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any) => [value, "Average score"]} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any) => [value, t("average_score_label")]} />
                   <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="#0f766e" />
                 </BarChart>
               </ResponsiveContainer>
@@ -124,13 +127,13 @@ export function InsightsPage() {
 
           {districtBreakdown.length > 1 && (
             <div className="mt-5">
-              <ChartCard title="Opportunity by district" help="Average opportunity score for mapped areas in each Kigali district">
+              <ChartCard title={t("opportunity_by_district")} help={t("opportunity_by_district_help")}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={districtBreakdown} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#eee5d8" vertical={false} />
                     <XAxis dataKey="district" tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any, _name: any, entry: any) => [`${value} average · ${entry?.payload?.count ?? 0} areas`, "Opportunity"]} />
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any, _name: any, entry: any) => [`${value} ${t("average_suffix")} · ${entry?.payload?.count ?? 0} ${t("areas_suffix")}`, t("opportunity_label")]} />
                     <Bar dataKey="average" radius={[8, 8, 0, 0]} fill="#f59e0b" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -139,12 +142,12 @@ export function InsightsPage() {
           )}
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <InsightBlock title="What to inspect first" text="Open high opportunity areas with manageable competition, then verify rent, visibility and informal competitors." icon={Sparkles} />
-            <InsightBlock title="Validation philosophy" text="Public data gives a shortlist. Field checks decide whether a specific premises is practical." icon={ShieldCheck} />
+            <InsightBlock title={t("what_to_inspect_first")} text={t("what_to_inspect_first_text")} icon={Sparkles} />
+            <InsightBlock title={t("validation_philosophy")} text={t("validation_philosophy_text")} icon={ShieldCheck} />
           </div>
         </>
       ) : (
-        <div className="mt-6"><EmptyDataPanel title="Insights unavailable" text="Refresh the page or try again shortly." /></div>
+        <div className="mt-6"><EmptyDataPanel title={t("insights_unavailable")} text={t("insights_unavailable_text")} /></div>
       )}
     </main>
   );

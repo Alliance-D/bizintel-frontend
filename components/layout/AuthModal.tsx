@@ -5,8 +5,10 @@ import { Lock, X } from "lucide-react";
 import { login, register, extractApiErrorMessage } from "@/lib/platform-api";
 import { setSession } from "@/lib/auth";
 import { BrandMark } from "@/components/layout/BrandMark";
+import { useLocale } from "@/lib/locale";
 
 export function AuthModal({ onClose }: { onClose: () => void }) {
+  const { t } = useLocale();
   const [tab, setTab] = useState<"signin" | "create">("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,7 +19,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
   async function submit() {
     setError(null);
     if (!email.trim() || !password.trim() || (tab === "create" && !fullName.trim())) {
-      setError("Fill in all fields to continue.");
+      setError(t("fill_all_fields"));
       return;
     }
     setSubmitting(true);
@@ -26,7 +28,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
       setSession(response.access_token, response.user);
       onClose();
     } catch (err) {
-      const fallback = tab === "signin" ? "Incorrect email or password." : "Could not create an account with these details. The email may already be in use.";
+      const fallback = tab === "signin" ? t("incorrect_credentials") : t("could_not_create_account");
       setError(extractApiErrorMessage(err, fallback));
     } finally {
       setSubmitting(false);
@@ -50,27 +52,27 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="auth-content">
           <BrandMark />
-          <h2>{tab === "signin" ? "Welcome back" : "Create your account"}</h2>
-          <p>Save candidate locations, create reports, track changes and submit field checks from one workspace</p>
+          <h2>{tab === "signin" ? t("welcome_back") : t("create_account")}</h2>
+          <p>{t("auth_subtitle")}</p>
           <div className="auth-tabs" role="tablist">
-            <button onClick={() => { setTab("signin"); setError(null); }} className={tab === "signin" ? "active" : ""}>Sign in</button>
-            <button onClick={() => { setTab("create"); setError(null); }} className={tab === "create" ? "active" : ""}>Create account</button>
+            <button onClick={() => { setTab("signin"); setError(null); }} className={tab === "signin" ? "active" : ""}>{t("sign_in")}</button>
+            <button onClick={() => { setTab("create"); setError(null); }} className={tab === "create" ? "active" : ""}>{t("create_account")}</button>
           </div>
           <form className="auth-form" onSubmit={(event) => { event.preventDefault(); submit(); }}>
             {tab === "create" && (
-              <label>Full name
+              <label>{t("full_name")}
                 <input className="input-modern" placeholder="Aline Uwase" value={fullName} onChange={(event) => setFullName(event.target.value)} />
               </label>
             )}
-            <label>Email
+            <label>{t("email")}
               <input className="input-modern" type="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
             </label>
-            <label>Password
+            <label>{t("password")}
               <input className="input-modern" type="password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} />
             </label>
             {error && <p className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
             <button type="submit" disabled={submitting} className="btn-primary w-full">
-              <Lock size={16} /> {submitting ? "Please wait" : tab === "signin" ? "Sign in" : "Create account"}
+              <Lock size={16} /> {submitting ? t("please_wait") : tab === "signin" ? t("sign_in") : t("create_account")}
             </button>
           </form>
         </div>
