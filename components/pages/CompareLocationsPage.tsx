@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, FileText, GitCompare, MapPin, Plus, ShieldCheck, Sparkles } from "lucide-react";
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
@@ -22,7 +22,7 @@ export function CompareLocationsPage() {
   const savedLocations = useMemo(() => (savedData?.locations || []).map(normaliseSavedLocation).filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude)), [savedData]);
   const [category, setCategory] = useState("pharmacy");
   const [locations, setLocations] = useState<Array<{ savedId?: string; label: string; latitude: string; longitude: string }>>([]);
-  const [queryLoaded, setQueryLoaded] = useState(false);
+  const lastHandledQueryKey = useRef<string | null>(null);
   const [result, setResult] = useState<any>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,34 +37,41 @@ export function CompareLocationsPage() {
   }
 
   useEffect(() => {
-    if (queryLoaded) return;
     const savedId = searchParams.get("saved");
     const latParam = searchParams.get("lat");
     const lonParam = searchParams.get("lon");
     const categoryParam = searchParams.get("category");
     const labelParam = searchParams.get("label");
 
+    // Each visit to /compare?... (e.g. clicking "Compare" again from a new
+    // assessed location) should append a candidate, not replace the list -
+    // keyed so the same URL never gets added twice, but a new lat/lon or
+    // saved id after it does.
+    const queryKey = savedId ? `saved:${savedId}` : (latParam && lonParam) ? `coord:${latParam}:${lonParam}` : null;
+    if (!queryKey || queryKey === lastHandledQueryKey.current) return;
+
     if (categoryParam) setCategory(categoryParam);
 
-    if (savedId && savedLocations.length) {
+    if (savedId) {
+      if (!savedLocations.length) return; // wait for saved locations to load before giving up
       const match = savedLocations.find((item) => item.id === savedId);
-      if (match) {
-        addSavedLocation(match);
-        setQueryLoaded(true);
-        return;
-      }
+      if (match) addSavedLocation(match);
+      lastHandledQueryKey.current = queryKey;
+      return;
     }
 
     if (latParam && lonParam) {
       const latitude = Number(latParam);
       const longitude = Number(lonParam);
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-        setLocations((prev) => prev.length ? prev : [{ label: labelParam || "Selected location", latitude: String(latitude), longitude: String(longitude) }]);
-        setQueryLoaded(true);
+        setLocations((prev) => prev.some((item) => item.latitude === String(latitude) && item.longitude === String(longitude))
+          ? prev
+          : [...prev, { label: labelParam || "Selected location", latitude: String(latitude), longitude: String(longitude) }]);
+        lastHandledQueryKey.current = queryKey;
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryLoaded, savedLocations, searchParams]);
+  }, [savedLocations, searchParams]);
 
   const validLocations = locations
     .map((item, index) => ({ label: item.label || `Candidate ${index + 1}`, latitude: Number(item.latitude), longitude: Number(item.longitude) }))
