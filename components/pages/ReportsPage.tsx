@@ -25,7 +25,13 @@ export function ReportsPage() {
   const { data: savedData } = useAsyncData(() => getSavedLocations(), [], { locations: [] });
   const savedLocations = useMemo(() => (savedData?.locations || []).map(normaliseSavedLocation).filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude)), [savedData]);
   const [category, setCategory] = useState("pharmacy");
-  const [title, setTitle] = useState(t("default_report_title"));
+  // Left empty rather than pre-filled with t("default_report_title"): a
+  // useState initializer only runs once at mount, so it would capture
+  // whatever locale happened to be active before the client hydrated from
+  // localStorage, and never update again if the user later toggled
+  // language. The translated default is applied as a placeholder/fallback
+  // instead, which stays live.
+  const [title, setTitle] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [selectedSavedId, setSelectedSavedId] = useState("");
@@ -84,8 +90,9 @@ export function ReportsPage() {
     if (!canCreate) { setMessage(t("choose_location_before_report")); return; }
     setLoading(true); setMessage(null);
     const saved_location_id = selectedSavedId && /^\d+$/.test(selectedSavedId) ? Number(selectedSavedId) : undefined;
+    const effectiveTitle = title.trim() || t("default_report_title");
     try {
-      const response = await generateReport({ title, business_category: category, latitude: lat, longitude: lon, saved_location_id });
+      const response = await generateReport({ title: effectiveTitle, business_category: category, latitude: lat, longitude: lon, saved_location_id });
       const report = response?.report || response || {};
       setResult({
         ...report,
@@ -102,12 +109,13 @@ export function ReportsPage() {
     if (!canCreate) { setMessage(t("choose_location_before_download")); return; }
     setLoading(true); setMessage(null);
     const saved_location_id = selectedSavedId && /^\d+$/.test(selectedSavedId) ? Number(selectedSavedId) : undefined;
+    const effectiveTitle = title.trim() || t("default_report_title");
     try {
-      const blob = await downloadReportPdf({ title, business_category: category, latitude: lat, longitude: lon, saved_location_id });
+      const blob = await downloadReportPdf({ title: effectiveTitle, business_category: category, latitude: lat, longitude: lon, saved_location_id });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "bizintel-report"}.pdf`;
+      anchor.download = `${effectiveTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "bizintel-report"}.pdf`;
       document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
       setMessage(t("pdf_downloaded"));
     } catch { setMessage(t("pdf_download_failed")); }
@@ -135,7 +143,7 @@ export function ReportsPage() {
                 {savedLocations.map((item) => <option key={item.id} value={item.id}>{item.label} — {categoryLabel(item.business_category)}</option>)}
               </select>
             </label>
-            <input className="input-modern" value={title} onChange={(e)=>setTitle(e.target.value)} />
+            <input className="input-modern" placeholder={t("default_report_title")} value={title} onChange={(e)=>setTitle(e.target.value)} />
             <select className="input-modern" value={category} onChange={(e)=>setCategory(e.target.value)}>{BUSINESS_CATEGORIES.map((item)=><option key={item.key} value={item.key}>{item.label}</option>)}</select>
             <div className="form-grid-2"><input className="input-modern" placeholder={t("latitude")} value={latitude} onChange={(e)=>{ setLatitude(e.target.value); setSelectedSavedId(""); }}/><input className="input-modern" placeholder={t("longitude")} value={longitude} onChange={(e)=>{ setLongitude(e.target.value); setSelectedSavedId(""); }}/></div>
             <button onClick={createReport} disabled={!canCreate || loading} className="btn-primary w-full"><FileText size={16}/> {loading ? t("creating") : t("create_report_button")}</button>
@@ -152,7 +160,7 @@ export function ReportsPage() {
             </div>
           </header>
           <div className="p-6">
-            <div className="kicker text-[var(--brand)]">{t("report_preview")}</div><h2 className="mt-2 display-font text-3xl font-black">{result?.title || title}</h2><p className="mt-3 max-w-4xl leading-7 text-slate-600">{summary}</p>
+            <div className="kicker text-[var(--brand)]">{t("report_preview")}</div><h2 className="mt-2 display-font text-3xl font-black">{result?.title || title || t("default_report_title")}</h2><p className="mt-3 max-w-4xl leading-7 text-slate-600">{summary}</p>
             {result ? <>
               <div className="mt-6 grid gap-4 md:grid-cols-3"><StatusCard title={t("opportunity_label")} value={score} text={t("overall_fit_signal")}/><StatusCard title={t("confidence_label")} value={confidence} text={t("data_coverage_reliability")}/><StatusCard title={t("category_label")} value={categoryLabel(category)} text={t("business_type_assessed")}/></div>
               {factors.length > 0 && <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><h3 className="font-black text-slate-950">{t("score_breakdown")}</h3><div className="mt-4 grid gap-3 md:grid-cols-2">{factors.map((factor: AnyObj)=><div key={factor.key || factor.label} className="rounded-2xl bg-white p-4"><div className="flex items-center justify-between gap-3"><strong className="text-sm text-slate-900">{factor.label}</strong><span className="font-black text-emerald-700">{Math.round(safeNumber(factor.score))}</span></div><Progress value={safeNumber(factor.score)} tone={factor.key === "competition" ? "amber" : "green"}/></div>)}</div></div>}
