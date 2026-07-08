@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, MapPin, Sparkles } from "lucide-react";
+import { AlertCircle, MapPin, Send, Sparkles } from "lucide-react";
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
-import { getAdvice, getAdvisorStatus, getSavedLocations, type AdvisorResponse } from "@/lib/platform-api";
+import { getAdvice, getAdvisorStatus, getSavedLocations, type AdvisorMessage } from "@/lib/platform-api";
 import { PageHeader, EmptyDataPanel, useAsyncData, normaliseSavedLocation } from "@/components/platform/pageHelpers";
 import { useLocale } from "@/lib/locale";
 
@@ -24,9 +24,11 @@ export function AdvisorPage() {
   const [longitude, setLongitude] = useState("");
   const [selectedSavedId, setSelectedSavedId] = useState("");
   const [queryLoaded, setQueryLoaded] = useState(false);
-  const [result, setResult] = useState<AdvisorResponse | null>(null);
+  const [messages, setMessages] = useState<AdvisorMessage[]>([]);
+  const [followUp, setFollowUp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const threadEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (queryLoaded) return;
@@ -56,20 +58,49 @@ export function AdvisorPage() {
     setCategory(item.business_category || "pharmacy");
     setLatitude(String(item.latitude));
     setLongitude(String(item.longitude));
-    setResult(null);
+    setMessages([]);
     setError(null);
   }
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, loading]);
 
   async function askAdvisor() {
     if (!canAsk) { setError(t("choose_valid_coords_first")); return; }
     setLoading(true);
     setError(null);
+    setMessages([]);
     try {
       const response = await getAdvice({ business_category: category, latitude: lat, longitude: lon, locale });
-      setResult(response);
-      if (!response.available) setError(response.message);
+      if (response.available && response.advice) {
+        setMessages([{ role: "assistant", text: response.advice }]);
+      } else {
+        setError(response.message);
+      }
     } catch {
-      setResult(null);
+      setError(t("advisor_generation_failed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendFollowUp() {
+    const question = followUp.trim();
+    if (!question || loading || !canAsk) return;
+    const nextMessages: AdvisorMessage[] = [...messages, { role: "user", text: question }];
+    setMessages(nextMessages);
+    setFollowUp("");
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getAdvice({ business_category: category, latitude: lat, longitude: lon, locale, messages: nextMessages });
+      if (response.available && response.advice) {
+        setMessages([...nextMessages, { role: "assistant", text: response.advice }]);
+      } else {
+        setError(response.message);
+      }
+    } catch {
       setError(t("advisor_generation_failed"));
     } finally {
       setLoading(false);
@@ -116,13 +147,41 @@ export function AdvisorPage() {
           </div>
         </aside>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="flex flex-col rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="kicker text-[var(--brand)]">{t("advisor_notes")}</div>
           <h2 className="mt-2 display-font text-3xl font-black">{categoryLabel(category)} {t("in_kigali")}</h2>
-          {result?.available && result.advice ? (
+
+          {messages.length ? (
             <>
-              <p className="mt-5 max-w-3xl whitespace-pre-line text-base leading-8 text-slate-700">{result.advice}</p>
-              <p className="mt-6 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">{t("advisor_disclaimer")}</p>
+              <div className="mt-5 max-h-[520px] space-y-4 overflow-y-auto pr-1">
+                {messages.map((msg, index) => (
+                  <div key={index} className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}>
+                    <p className={`max-w-[85%] whitespace-pre-line break-words rounded-2xl px-4 py-3 text-sm leading-7 ${msg.role === "user" ? "bg-[#10231f] text-white" : "bg-slate-50 text-slate-700"}`}>
+                      {msg.text}
+                    </p>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <p className="max-w-[85%] rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">{t("thinking")}…</p>
+                  </div>
+                )}
+                <div ref={threadEndRef} />
+              </div>
+              <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">{t("advisor_disclaimer")}</p>
+              <form
+                className="mt-4 flex items-center gap-2"
+                onSubmit={(event) => { event.preventDefault(); sendFollowUp(); }}
+              >
+                <input
+                  className="input-modern flex-1"
+                  placeholder={t("follow_up_placeholder")}
+                  value={followUp}
+                  onChange={(event) => setFollowUp(event.target.value)}
+                  disabled={loading}
+                />
+                <button type="submit" disabled={loading || !followUp.trim()} className="btn-primary shrink-0 px-4"><Send size={16} /></button>
+              </form>
             </>
           ) : (
             <div className="mt-5"><EmptyDataPanel title={t("no_advice_yet")} text={t("no_advice_yet_text")} /></div>

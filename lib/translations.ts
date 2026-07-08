@@ -207,6 +207,7 @@ export const en = {
   advisor_disclaimer: "This is advisory commentary on the location's computed spatial signals, not a prediction of revenue, profit or business success. Confirm rent, visibility and informal competition in the field before committing.",
   no_advice_yet: "No advice yet",
   no_advice_yet_text: "Choose a location and select Get advice to receive narrative guidance grounded in its opportunity, access and competition signals.",
+  follow_up_placeholder: "Ask a follow-up question about this location",
 
   // Common actions used across pages
   save_location: "Save location",
@@ -591,6 +592,7 @@ export const rw: Partial<Record<TranslationKey, string>> = {
   advisor_disclaimer: "Izi ni inama zishingiye ku bimenyetso by'umwanya byabazwe, ntabwo ari iteganya ry'inyungu, umusaruro cyangwa intsinzi y'ubucuruzi. Emeza ikodesha, kuboneka n'abandi bacuruza batemewe ku rubuga mbere yo kwiyemeza.",
   no_advice_yet: "Nta nama irahari",
   no_advice_yet_text: "Hitamo ahantu hanyuma ukande 'Bona inama' kugira ngo ubone ubuyobozi bushingiye ku bimenyetso by'amahirwe, kugerwaho n'ipiganwa.",
+  follow_up_placeholder: "Baza ikibazo cyongeyeho kuri aha hantu",
 
   save_location: "Bika ahantu",
   saving: "Turabika",

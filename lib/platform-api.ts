@@ -272,11 +272,13 @@ export type AdvisorResponse = {
   model?: string;
 };
 
+export type AdvisorMessage = { role: "user" | "assistant"; text: string };
+
 export async function getAdvisorStatus() {
   return requestJson<{ available: boolean }>(`/api/v1/platform/advisor/status`);
 }
 
-export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number; locale?: string }) {
+export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number; locale?: string; messages?: AdvisorMessage[] }) {
   return requestJson<AdvisorResponse>(`/api/v1/platform/advisor`, {
     method: "POST",
     body: JSON.stringify(payload),
