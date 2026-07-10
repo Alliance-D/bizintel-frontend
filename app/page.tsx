@@ -61,8 +61,8 @@ export default function HomePage() {
           <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.06em] text-slate-950 md:text-7xl">{t("home_headline")}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">{t("home_subhead")}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/map" className="btn-primary">{t("home_open_map")} <ArrowRight size={18}/></Link>
-            <Link href="/scout" className="btn-secondary">{t("home_try_scout")}</Link>
+            <Link href="/start" className="btn-primary">{t("home_get_started")} <ArrowRight size={18}/></Link>
+            <Link href="/map" className="btn-secondary">{t("home_open_map")}</Link>
           </div>
           <div className="mt-10 grid max-w-2xl gap-4 border-t border-[var(--line)] pt-6 sm:grid-cols-3">
             {[t("home_pill_scoring"), t("home_pill_ml"), t("home_pill_field")].map((item) => <div key={item} className="flex items-center gap-2 text-sm font-extrabold text-slate-700"><CheckCircle2 className="size-4 text-[var(--brand)]" />{item}</div>)}
@@ -102,7 +102,7 @@ export default function HomePage() {
 
       <section className="app-container py-16">
         <div className="rounded-[2rem] bg-[#10231f] p-8 text-white shadow-2xl shadow-slate-900/10 md:p-12">
-          <div className="max-w-2xl"><h2 className="display-font text-4xl font-black tracking-[-0.05em]">{t("home_cta_title")}</h2><p className="mt-5 leading-7 text-white/75">{t("home_cta_text")}</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/map" className="rounded-full bg-white px-5 py-3 font-black text-slate-950">{t("home_cta_explore")}</Link><Link href="/login" className="rounded-full border border-white/20 px-5 py-3 font-black text-white">{t("home_cta_create_account")}</Link></div></div>
+          <div className="max-w-2xl"><h2 className="display-font text-4xl font-black tracking-[-0.05em]">{t("home_cta_title")}</h2><p className="mt-5 leading-7 text-white/75">{t("home_cta_text")}</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/start" className="rounded-full bg-white px-5 py-3 font-black text-slate-950">{t("home_cta_get_started")}</Link><Link href="/map" className="rounded-full border border-white/20 px-5 py-3 font-black text-white">{t("home_cta_explore")}</Link></div></div>
         </div>
       </section>
     </AppShell>

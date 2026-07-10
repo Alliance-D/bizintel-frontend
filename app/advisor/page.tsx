@@ -1,4 +1,6 @@
-import { AppShell } from "@/components/layout/AppShell";
-import { AdvisorPage } from "@/components/pages/AdvisorPage";
-export const metadata = { title: "AI Business Advisor | BizIntel" };
-export default function Page() { return <AppShell><AdvisorPage /></AppShell>; }
+import { redirect } from "next/navigation";
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => typeof v === "string") as [string, string][]).toString();
+  redirect(qs ? `/start?${qs}` : "/start");
+}

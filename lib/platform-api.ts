@@ -72,11 +72,20 @@ export type PlatformAssessment = {
   business_category: string;
   latitude: number;
   longitude: number;
+  district?: string;
+  sector?: string;
+  cell?: string;
+  village?: string;
+  location_label?: string;
   overall: {
     opportunity_score: number;
+    gap_score?: number;
     opportunity_type?: string;
     confidence_score: number;
     opportunity_rank?: number | null;
+    expected_count?: number | null;
+    observed_count?: number | null;
+    gap?: number | null;
   };
   factors: {
     demand_score: number;
@@ -93,6 +102,66 @@ export type PlatformAssessment = {
   recommendation?: string;
   explanation?: any;
 };
+
+export type NearbyCompetitor = {
+  name: string | null;
+  category_key: string;
+  latitude: number;
+  longitude: number;
+  distance_m: number;
+};
+
+export type VillageBoundary = {
+  district: string | null;
+  sector: string | null;
+  cell: string | null;
+  village: string | null;
+  geometry: GeoJSON.Geometry | null;
+} | null;
+
+export type UnifiedReportPointEntry = {
+  mode: "point";
+  label: string;
+  latitude: number;
+  longitude: number;
+  assessment: PlatformAssessment;
+  competitors: NearbyCompetitor[];
+  village_boundary: VillageBoundary;
+  narrative: AdvisorResponse;
+};
+
+export type AreaCandidate = OpportunityCell & { location_label?: string; village?: string; sector?: string; cell?: string };
+
+export type UnifiedReportAreaEntry = {
+  mode: "area";
+  label: string;
+  district: string;
+  sector?: string | null;
+  cell?: string | null;
+  top_candidates: AreaCandidate[];
+  expanded_candidate?: UnifiedReportPointEntry;
+};
+
+export type UnifiedReportEntry = UnifiedReportPointEntry | UnifiedReportAreaEntry;
+
+export type ComparisonResult = {
+  locations: Array<Record<string, any>>;
+  best_location: Record<string, any> | null;
+  summary: string;
+};
+
+export type UnifiedReportBundle = {
+  business_category: string;
+  budget?: string | null;
+  notes?: string | null;
+  locale?: string | null;
+  entries: UnifiedReportEntry[];
+  comparison: ComparisonResult | null;
+};
+
+export type UnifiedReportFormLocation =
+  | { mode: "point"; latitude: number; longitude: number; label?: string }
+  | { mode: "area"; district: string; sector?: string; cell?: string; label?: string };
 
 async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -124,10 +193,67 @@ export function extractApiErrorMessage(error: unknown, fallback: string): string
   return fallback;
 }
 
-export async function getPlatformOpportunityCells(category = "salon", district?: string, limit = 120) {
+export async function getPlatformOpportunityCells(category = "salon", district?: string, limit = 120, sector?: string, cell?: string) {
   const params = new URLSearchParams({ category, limit: String(limit) });
   if (district) params.set("district", district);
+  if (sector) params.set("sector", sector);
+  if (cell) params.set("cell", cell);
   return requestJson<OpportunityCellsResponse>(`/api/v1/platform/opportunity-cells?${params.toString()}`);
+}
+
+// ---------------------------------------------------------------------------
+// Geography (location-hierarchy picker + village context)
+// ---------------------------------------------------------------------------
+
+export async function getDistricts() {
+  return requestJson<{ districts: string[] }>(`/api/v1/geography/districts`);
+}
+
+export async function getSectors(district: string) {
+  return requestJson<{ district: string; sectors: string[] }>(`/api/v1/geography/sectors?district=${encodeURIComponent(district)}`);
+}
+
+export async function getCells(district: string, sector: string) {
+  const params = new URLSearchParams({ district, sector });
+  return requestJson<{ district: string; sector: string; cells: string[] }>(`/api/v1/geography/cells?${params.toString()}`);
+}
+
+export async function getVillageBoundary(latitude: number, longitude: number) {
+  const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude) });
+  return requestJson<NonNullable<VillageBoundary>>(`/api/v1/platform/village-boundary?${params.toString()}`);
+}
+
+export async function getNearbyCompetitors(latitude: number, longitude: number, category: string, radiusMeters = 1000) {
+  const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude), category, radius_meters: String(radiusMeters) });
+  return requestJson<{ business_category: string; latitude: number; longitude: number; competitors: NearbyCompetitor[] }>(`/api/v1/platform/nearby-competitors?${params.toString()}`);
+}
+
+// ---------------------------------------------------------------------------
+// Unified report (the /start form -> /report/[id] flow)
+// ---------------------------------------------------------------------------
+
+export async function buildUnifiedReport(payload: {
+  business_category: string;
+  locations: UnifiedReportFormLocation[];
+  budget?: string;
+  notes?: string;
+  locale?: string;
+}) {
+  return requestJson<{ report_id: number | null; report: UnifiedReportBundle }>(`/api/v1/reports/build`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getUnifiedReport(reportId: string | number) {
+  return requestJson<{ report_id: number; report: UnifiedReportBundle }>(`/api/v1/reports/${encodeURIComponent(String(reportId))}`);
+}
+
+export async function expandCandidate(reportId: string | number, payload: { entry_index: number; grid_id: string; latitude: number; longitude: number; label?: string }) {
+  return requestJson<UnifiedReportPointEntry>(`/api/v1/reports/${encodeURIComponent(String(reportId))}/expand`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getPlatformOpportunityGeoJson(category = "pharmacy", layer = "opportunity", limit = 5000, locale?: string) {
@@ -278,7 +404,7 @@ export async function getAdvisorStatus() {
   return requestJson<{ available: boolean }>(`/api/v1/platform/advisor/status`);
 }
 
-export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number; locale?: string; messages?: AdvisorMessage[] }) {
+export async function getAdvice(payload: { business_category: string; latitude: number; longitude: number; locale?: string; messages?: AdvisorMessage[]; user_context?: { budget?: string; notes?: string } }) {
   return requestJson<AdvisorResponse>(`/api/v1/platform/advisor`, {
     method: "POST",
     body: JSON.stringify(payload),
