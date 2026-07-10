@@ -45,6 +45,7 @@ type Zone = {
   area: string;
   district: string;
   sector?: string;
+  village?: string;
   category: string;
   latitude: number;
   longitude: number;
@@ -64,6 +65,9 @@ type Zone = {
   anchorSignal?: number;
   directSupply?: number;
   underservedSignal?: number;
+  expectedCount?: number | null;
+  observedCount?: number | null;
+  gap?: number | null;
   source?: string;
 };
 
@@ -164,31 +168,40 @@ function metricValue(zone: Zone, layer: LayerKey) {
   return layer === "opportunity" ? zone.opportunity : zone[layer];
 }
 
+// `opportunity` is the gap percentile within category (0-100, higher = more
+// underserved) - these bands match gap_percentile_classification() in
+// scripts/train_and_score_opportunity_model.py exactly, so a cell's color,
+// badge and label are never inconsistent with the backend's own classification.
 function scoreLabel(value: number, t: T) {
-  if (value >= 78) return t("score_strong");
-  if (value >= 60) return t("score_promising");
-  return t("score_needs_checks");
+  if (value >= 80) return t("score_underserved");
+  if (value >= 55) return t("score_room_to_grow");
+  if (value >= 25) return t("score_balanced");
+  return t("score_saturated");
 }
 
 function scoreClass(value: number) {
-  if (value >= 78) return "score-strong";
-  if (value >= 60) return "score-medium";
-  return "score-risk";
+  if (value >= 80) return "score-underserved";
+  if (value >= 55) return "score-medium";
+  if (value >= 25) return "score-balanced";
+  return "score-saturated";
 }
 
-function opportunityType(opportunity: number, competition: number, demand: number, access: number, t: T) {
-  if (demand > 78 && competition < 55) return t("opp_type_high_demand_lower_supply");
-  if (competition > 78 && opportunity > 68) return t("opp_type_strong_demand_crowded");
-  if (access > 78 && demand > 65) return t("opp_type_accessible_demand_pocket");
-  if (opportunity < 52) return t("opp_type_needs_stronger_signals");
-  return t("opp_type_worth_comparing");
+// Fallback only - the backend's own opportunity_type/zone_key (from
+// gap_percentile_classification()) is used whenever it's present.
+function opportunityType(opportunity: number, _competition: number, _demand: number, _access: number, t: T) {
+  if (opportunity >= 80) return t("opp_type_underserved");
+  if (opportunity >= 55) return t("opp_type_room_to_grow");
+  if (opportunity >= 25) return t("opp_type_balanced");
+  return t("opp_type_saturated");
 }
 
 function zoneFromAssessment(assessment: PlatformAssessment, t: T): Zone {
   return {
     id: "selected-location",
-    area: t("selected_location_area"),
-    district: t("kigali_label"),
+    area: assessment.location_label || t("selected_location_area"),
+    district: assessment.district || t("kigali_label"),
+    sector: assessment.sector,
+    village: assessment.village,
     category: assessment.business_category,
     latitude: assessment.latitude,
     longitude: assessment.longitude,
@@ -202,6 +215,9 @@ function zoneFromAssessment(assessment: PlatformAssessment, t: T): Zone {
     risk: assessment.risk_notes?.length ? "medium" : "low",
     population: Math.round(1200 + clamp(Number(assessment.factors?.demand_score || 0)) * 95),
     directSupply: Math.max(0, Math.round(clamp(Number(assessment.factors?.competition_pressure || 0)) / 12)),
+    expectedCount: assessment.overall?.expected_count,
+    observedCount: assessment.overall?.observed_count,
+    gap: assessment.overall?.gap,
     source: "assessment",
   };
 }
@@ -262,13 +278,16 @@ function zoneFromGeoJsonFeature(feature: any, category: string, t: T): Zone | nu
   const district = String(props.district || t("kigali_label"));
   const sector = props.sector ? String(props.sector) : undefined;
   const cell = props.cell ? String(props.cell) : undefined;
-  const area = [sector, cell].filter(Boolean).join(" · ") || district || String(props.grid_id || t("opportunity_cell_fallback"));
+  const village = props.village ? String(props.village) : undefined;
+  const area = props.location_label ? String(props.location_label) : ([sector, cell].filter(Boolean).join(" · ") || district || String(props.grid_id || t("opportunity_cell_fallback")));
+  const gapDetails = props.explanation?.gap_details;
   return {
     id: String(props.grid_id || props.id || `${latitude},${longitude}`),
     geometry,
     area,
     district,
     sector,
+    village,
     category: String(props.business_category || props.category || category),
     latitude,
     longitude,
@@ -278,6 +297,9 @@ function zoneFromGeoJsonFeature(feature: any, category: string, t: T): Zone | nu
     commercial,
     competition,
     confidence,
+    // The backend already writes an honest gap-based classification
+    // (Underserved/Room to grow/Balanced/Saturated) - only fall back to the
+    // local heuristic if it's genuinely missing.
     type: String(props.opportunity_type || props.zone_key || opportunityType(opportunity, competition, demand, access, t)),
     risk: String(props.risk_level || "medium"),
     population: Math.round(1200 + demand * 95),
@@ -288,6 +310,9 @@ function zoneFromGeoJsonFeature(feature: any, category: string, t: T): Zone | nu
     anchorSignal: commercial,
     directSupply: Math.max(0, Math.round(competition / 12)),
     underservedSignal: clamp(demand - competition + 45),
+    expectedCount: gapDetails?.expected_count ?? null,
+    observedCount: gapDetails?.observed_count ?? null,
+    gap: gapDetails?.gap ?? null,
     source: "backend-geojson",
   };
 }
@@ -298,7 +323,20 @@ function cellColor(layer: LayerKey): any {
   if (layer === "access") return ["interpolate", ["linear"], ["get", "access"], 25, "#ecfdf5", 55, "#5eead4", 82, "#0f766e"];
   if (layer === "commercial") return ["interpolate", ["linear"], ["get", "commercial"], 25, "#fef3c7", 55, "#f59e0b", 82, "#b45309"];
   if (layer === "demand") return ["interpolate", ["linear"], ["get", "demand"], 25, "#dcfce7", 55, "#22c55e", 82, "#047857"];
-  return ["interpolate", ["linear"], ["get", "opportunity"], 25, "#e2e8f0", 52, "#ccfbf1", 68, "#2dd4bf", 82, "#0f766e"];
+  // "opportunity" is the gap percentile within category (0-100, higher =
+  // more underserved) - a diverging scale, not a low-to-high one, since low
+  // values mean saturated (bad) and high values mean underserved (an
+  // opportunity), not "less of the same good thing." Breakpoints match
+  // gap_percentile_classification() in train_and_score_opportunity_model.py
+  // exactly (25/55/80) so a cell's color never disagrees with its label.
+  return ["interpolate", ["linear"], ["get", "opportunity"],
+    0, "#e11d48",
+    25, "#fda4af",
+    40, "#f8fafc",
+    55, "#f8fafc",
+    65, "#99f6e4",
+    80, "#2dd4bf",
+    100, "#0f766e"];
 }
 
 function layerLabel(layer: LayerKey, t: T) {
@@ -338,7 +376,12 @@ function EmptyMapCallout({ mode, t }: { mode: Mode; t: T }) {
 
 function LayerLegend({ layer, t }: { layer: LayerKey; t: T }) {
   const items: Record<LayerKey, Array<{ label: string; color: string }>> = {
-    opportunity: [{ label: t("legend_needs_checks"), color: "#ccfbf1" }, { label: t("legend_promising"), color: "#2dd4bf" }, { label: t("legend_strong"), color: "#0f766e" }],
+    opportunity: [
+      { label: t("legend_saturated"), color: "#e11d48" },
+      { label: t("legend_balanced"), color: "#cbd5e1" },
+      { label: t("legend_room_to_grow"), color: "#2dd4bf" },
+      { label: t("legend_underserved"), color: "#0f766e" },
+    ],
     demand: [{ label: t("legend_lower_demand"), color: "#dcfce7" }, { label: t("legend_growing"), color: "#22c55e" }, { label: t("legend_high_demand"), color: "#047857" }],
     competition: [{ label: t("legend_low_supply"), color: "#14b8a6" }, { label: t("legend_balanced"), color: "#f59e0b" }, { label: t("legend_crowded"), color: "#e11d48" }],
     access: [{ label: t("legend_limited"), color: "#ecfdf5" }, { label: t("legend_good"), color: "#5eead4" }, { label: t("legend_strong"), color: "#0f766e" }],
@@ -350,7 +393,7 @@ function LayerLegend({ layer, t }: { layer: LayerKey; t: T }) {
 
 function propsToZone(props: any, t: T): Zone {
   return {
-    id: String(props.id || props.grid_id), area: String(props.area || props.cell || props.sector || props.grid_id || t("opportunity_cell_fallback")), district: String(props.district || t("kigali_label")), sector: props.sector ? String(props.sector) : undefined, category: String(props.category || props.business_category || "pharmacy"), latitude: Number(props.latitude), longitude: Number(props.longitude), opportunity: clamp(Number(props.opportunity)), demand: clamp(Number(props.demand)), access: clamp(Number(props.access)), commercial: clamp(Number(props.commercial)), competition: clamp(Number(props.competition)), confidence: clamp(Number(props.confidence)), type: String(props.type || props.opportunity_type || t("opp_type_worth_comparing")), risk: String(props.risk || props.risk_level || "medium"), population: Number(props.population || 0), householdSignal: Number(props.householdSignal || props.demand || 0), spendingSignal: Number(props.spendingSignal || props.demand || 0), roadSignal: Number(props.roadSignal || props.access || 0), transitSignal: Number(props.transitSignal || props.access || 0), anchorSignal: Number(props.anchorSignal || props.commercial || 0), directSupply: Number(props.directSupply || 0), underservedSignal: Number(props.underservedSignal || 0), source: String(props.source || "grid") };
+    id: String(props.id || props.grid_id), area: String(props.area || props.cell || props.sector || props.grid_id || t("opportunity_cell_fallback")), district: String(props.district || t("kigali_label")), sector: props.sector ? String(props.sector) : undefined, village: props.village ? String(props.village) : undefined, category: String(props.category || props.business_category || "pharmacy"), latitude: Number(props.latitude), longitude: Number(props.longitude), opportunity: clamp(Number(props.opportunity)), demand: clamp(Number(props.demand)), access: clamp(Number(props.access)), commercial: clamp(Number(props.commercial)), competition: clamp(Number(props.competition)), confidence: clamp(Number(props.confidence)), type: String(props.type || props.opportunity_type || t("opp_type_balanced")), risk: String(props.risk || props.risk_level || "medium"), population: Number(props.population || 0), householdSignal: Number(props.householdSignal || props.demand || 0), spendingSignal: Number(props.spendingSignal || props.demand || 0), roadSignal: Number(props.roadSignal || props.access || 0), transitSignal: Number(props.transitSignal || props.access || 0), anchorSignal: Number(props.anchorSignal || props.commercial || 0), directSupply: Number(props.directSupply || 0), underservedSignal: Number(props.underservedSignal || 0), expectedCount: props.expectedCount ?? null, observedCount: props.observedCount ?? null, gap: props.gap ?? null, source: String(props.source || "grid") };
 }
 
 export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: Props) {
@@ -701,6 +744,22 @@ export function LocationIntelligenceWorkspace({ initialMode = "opportunity" }: P
                 </div>
               </div>
               <p className="selected-summary">{selectedZone.type}. {t("selected_summary_suffix")}</p>
+              {(selectedZone.expectedCount != null || selectedZone.observedCount != null) && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">{t("report_expected_label")}</div>
+                    <div className="mt-1 font-black text-slate-950">{selectedZone.expectedCount != null ? selectedZone.expectedCount.toFixed(1) : "-"}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">{t("report_observed_label")}</div>
+                    <div className="mt-1 font-black text-slate-950">{selectedZone.observedCount != null ? selectedZone.observedCount.toFixed(0) : "-"}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">{t("report_gap_label")}</div>
+                    <div className="mt-1 font-black text-slate-950">{selectedZone.gap != null ? (selectedZone.gap > 0 ? `+${selectedZone.gap.toFixed(1)}` : selectedZone.gap.toFixed(1)) : "-"}</div>
+                  </div>
+                </div>
+              )}
               {selectedLensInsight && (
                 <div className="lens-detail-card">
                   <div className="kicker">{selectedLensInsight.title}</div>

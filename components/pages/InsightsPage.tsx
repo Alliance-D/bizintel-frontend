@@ -44,14 +44,18 @@ export function InsightsPage() {
 
   const scores = features.map((f) => safeNumber(f.properties?.opportunity_score)).filter((n) => n > 0);
   const average = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  const high = scores.filter((n) => n >= 78).length;
-  const saturated = features.filter((f) => safeNumber(f.properties?.competition_pressure) >= 78).length;
-  const lowSupply = features.filter((f) => safeNumber(f.properties?.demand_score) >= 65 && safeNumber(f.properties?.competition_pressure) < 55).length;
+  // zone_key comes straight from the model's own gap_percentile_classification()
+  // (underserved/emerging/balanced/saturated) - counting by it instead of
+  // re-deriving thresholds locally keeps this page consistent with what the
+  // model actually says, rather than a second, looser approximation of it.
+  const underserved = features.filter((f) => f.properties?.zone_key === "underserved").length;
+  const roomToGrow = features.filter((f) => f.properties?.zone_key === "emerging").length;
+  const saturated = features.filter((f) => f.properties?.zone_key === "saturated").length;
   const cards = [
     { title: t("avg_opportunity"), value: average || t("no_data"), text: t("mean_score_areas").replace("{category}", categoryLabel(category).toLowerCase()) },
-    { title: t("high_opportunity_areas"), value: high, text: t("high_opportunity_areas_text") },
-    { title: t("crowded_areas"), value: saturated, text: t("crowded_areas_text") },
-    { title: t("low_supply_pockets"), value: lowSupply, text: t("low_supply_pockets_text") },
+    { title: t("underserved_areas"), value: underserved, text: t("underserved_areas_text") },
+    { title: t("saturated_areas"), value: saturated, text: t("saturated_areas_text") },
+    { title: t("room_to_grow_areas"), value: roomToGrow, text: t("room_to_grow_areas_text") },
   ];
 
   const distribution = useMemo(() => SCORE_BUCKETS.map((bucket) => ({
