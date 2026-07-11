@@ -49,6 +49,41 @@ function fmt(n: number | null | undefined, digits = 0): string {
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+// Category, activity and landmark labels are translated on the client from
+// stable tokens (a category key, an English/Kinyarwanda level word, a bare
+// landmark name) rather than from prose baked at report-build time - so they
+// flip instantly on the language toggle without waiting on a re-fetch.
+const CAT_KEY: Record<string, TranslationKey> = {
+  pharmacy: "cat_pharmacy", restaurant: "cat_restaurant", cafe: "cat_cafe", grocery: "cat_grocery", salon: "cat_salon",
+};
+function catLabel(key: string | undefined, t: T): string {
+  const tk = key ? CAT_KEY[key] : undefined;
+  return tk ? t(tk) : categoryLabel(key || "");
+}
+
+const ACTIVITY_KEY: Record<string, TranslationKey> = {
+  high: "activity_high", medium: "activity_medium", low: "activity_low",
+  byinshi: "activity_high", bigereranije: "activity_medium", bike: "activity_low",
+};
+function activityLabel(v: string | null | undefined, t: T): string {
+  if (!v) return "—";
+  const tk = ACTIVITY_KEY[v.trim().toLowerCase()];
+  return tk ? t(tk) : v;
+}
+
+// The backend returns a bare landmark name (e.g. "Kubadive"); the "near"/"hafi ya"
+// connector is added here so it translates. The strip guards against older
+// reports that baked the connector into the stored name.
+function stripNear(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const n = s.replace(/^(near\s+|hafi ya\s+)/i, "").trim();
+  return n || null;
+}
+function nearLabel(s: string | null | undefined, t: T): string | null {
+  const n = stripNear(s);
+  return n ? t("loc_near").replace("{name}", n) : null;
+}
+
 function CapacityBar({ expected, observed, t }: { expected: number; observed: number; t: T }) {
   const over = observed > expected;
   const room = Math.max(0, expected - observed);
@@ -144,12 +179,13 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
   const a = entry.assessment;
   const overall = a.overall || ({} as any);
   const sig = a.signals;
-  const cat = categoryLabel(a.business_category).toLowerCase();
+  const cat = catLabel(a.business_category, t).toLowerCase();
   const expected = safeNumber(overall.expected_count);
   const observed = safeNumber(overall.observed_count);
   const room = expected - observed;
   const sit = situationFromCounts(expected, observed);
-  const place = entry.label || a.landmark || a.location_label || t("kigali_label");
+  const landmarkPlace = nearLabel(a.landmark, t);
+  const place = landmarkPlace || entry.label || a.location_label || t("kigali_label");
   const context = a.location_label && a.location_label !== place ? a.location_label : null;
 
   const anchors = entry.anchors || [];
@@ -157,7 +193,11 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
   const markets = anchors.filter((x) => x.category_key === "market");
   const schools = anchors.filter((x) => x.category_key === "school" || x.category_key === "health");
   const footTraffic = [...busStops, ...markets, ...schools].sort((x, y) => x.distance_m - y.distance_m);
-  const fieldChecks: string[] = Array.isArray(a.explanation?.field_checks) ? a.explanation.field_checks : [];
+  // A fixed, translated field-check list - the same practical steps regardless
+  // of location - so it reads naturally and flips language on toggle. (The
+  // model's own baked checklist was English-only and mentioned data sources
+  // the user doesn't need to hear about.)
+  const fieldChecks: TranslationKey[] = ["report_check_1", "report_check_2", "report_check_3", "report_check_4"];
 
   const [mapOpen, setMapOpen] = useState(false);
   const buildLoc = (reportLocale || "en").toLowerCase().startsWith("rw") ? "rw" : "en";
@@ -211,7 +251,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
             <div className="sec-label">{t("report_signals_heading")}</div>
             <div className="mt-3">
               <Signal label={t("report_signal_people")} value={fmt(sig?.people_within_1km, 0)} unit={t("report_within_1km")} />
-              <Signal label={t("report_signal_activity")} value={sig?.commercial_activity_level || "—"} />
+              <Signal label={t("report_signal_activity")} value={activityLabel(sig?.commercial_activity_level, t)} />
               <Signal label={t("report_signal_competitors").replace("{cat}", cat)} value={fmt(observed, 0)} unit={a.competition ? undefined : undefined} />
               <Signal label={t("report_signal_anchors")} value={fmt(sig?.anchor_count_1000m, 0)} unit={t("report_within_1km")} />
               <Signal label={t("report_signal_estimate")} value={`≈ ${fmt(expected, 1)}`} unit={cat} />
@@ -228,16 +268,14 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
               )}
             </div>
 
-            {fieldChecks.length > 0 && (
-              <div className="mt-8">
-                <div className="sec-label">{t("report_before_heading")}</div>
-                <ul className="mt-3 flex flex-col gap-2.5">
-                  {fieldChecks.slice(0, 4).map((c) => (
-                    <li key={c} className="flex max-w-[62ch] gap-3 text-[14.5px] leading-[1.55] text-[var(--ink-soft)]"><Check size={16} className="mt-0.5 shrink-0 text-[var(--brand)]" /> {c}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="mt-8">
+              <div className="sec-label">{t("report_before_heading")}</div>
+              <ul className="mt-3 flex flex-col gap-2.5">
+                {fieldChecks.map((c) => (
+                  <li key={c} className="flex max-w-[62ch] gap-3 text-[14.5px] leading-[1.55] text-[var(--ink-soft)]"><Check size={16} className="mt-0.5 shrink-0 text-[var(--brand)]" /> {t(c)}</li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* aside */}
@@ -288,7 +326,7 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
     } catch {} finally { setExpandingId(null); }
   }
 
-  const cat = categoryLabel(entry.top_candidates[0]?.business_category || "pharmacy").toLowerCase();
+  const cat = catLabel(entry.top_candidates[0]?.business_category || "pharmacy", t).toLowerCase();
 
   if (expanded) {
     return (
@@ -311,7 +349,7 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
           const cExp = safeNumber(gd.expected_count);
           const cObs = safeNumber(gd.observed_count);
           const sit = situationFromCounts(cExp, cObs);
-          const name = c.landmark || c.location_label || c.name;
+          const name = nearLabel(c.landmark, t) || c.location_label || c.name;
           const sub = c.location_label && c.location_label !== name ? c.location_label : null;
           return (
             <div key={c.grid_id} className="panel-flat bg-[var(--surface-soft)] flex flex-col p-5">
@@ -364,7 +402,7 @@ function CompareView({ comparison, entries, reportLocale }: { comparison: NonNul
             const room = rExp - rObs;
             const sit = situationFromCounts(rExp, rObs);
             const isBest = row.label === bestLabel;
-            const name = row.landmark || row.location_label || row.label;
+            const name = nearLabel(row.landmark, t) || row.location_label || row.label;
             const sub = row.location_label && row.location_label !== name ? row.location_label : null;
             const idx = entryIndexFor(row);
             return (
@@ -411,7 +449,7 @@ export function ReportPage({ reportId }: { reportId: string }) {
   return (
     <main className="app-container py-8 lg:py-12">
       <div className="mb-7">
-        <div className="kicker">{categoryLabel(report.business_category)}</div>
+        <div className="kicker">{catLabel(report.business_category, t)}</div>
         <h1 className="mt-3 text-[clamp(26px,3.4vw,40px)] font-black tracking-[-0.02em]">{t("report_page_title")}</h1>
       </div>
       <div className="flex flex-col gap-7">
