@@ -11,6 +11,7 @@ type ReportMapProps = {
   anchors?: NearbyPoi[];
   villageBoundary?: VillageBoundary;
   height?: number;
+  interactive?: boolean;
 };
 
 function boundsFromPoints(points: [number, number][]): maplibregl.LngLatBoundsLike {
@@ -38,7 +39,7 @@ function fc(points: NearbyPoi[]) {
   } as any;
 }
 
-export function ReportMap({ latitude, longitude, competitors = [], anchors = [], villageBoundary = null, height = 320 }: ReportMapProps) {
+export function ReportMap({ latitude, longitude, competitors = [], anchors = [], villageBoundary = null, height = 320, interactive = false }: ReportMapProps) {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
@@ -49,7 +50,7 @@ export function ReportMap({ latitude, longitude, competitors = [], anchors = [],
       container: mapEl.current,
       center: [longitude, latitude],
       zoom: 15,
-      interactive: false,
+      interactive,
       attributionControl: false,
       style: {
         version: 8,
@@ -58,6 +59,7 @@ export function ReportMap({ latitude, longitude, competitors = [], anchors = [],
       },
     });
     mapRef.current = map;
+    if (interactive) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     const transport = anchors.filter((a) => a.category_key === "transport");
     const others = anchors.filter((a) => a.category_key !== "transport");

@@ -77,6 +77,7 @@ export type PlatformAssessment = {
   cell?: string;
   village?: string;
   location_label?: string;
+  landmark?: string | null;
   overall: {
     opportunity_score: number;
     gap_score?: number;
@@ -152,7 +153,7 @@ export type UnifiedReportPointEntry = {
   narrative: AdvisorResponse;
 };
 
-export type AreaCandidate = OpportunityCell & { location_label?: string; village?: string; sector?: string; cell?: string };
+export type AreaCandidate = OpportunityCell & { location_label?: string; landmark?: string | null; village?: string; sector?: string; cell?: string };
 
 export type UnifiedReportAreaEntry = {
   mode: "area";
@@ -177,6 +178,7 @@ export type UnifiedReportBundle = {
   budget?: string | null;
   notes?: string | null;
   locale?: string | null;
+  mode?: "single" | "compare" | string;
   entries: UnifiedReportEntry[];
   comparison: ComparisonResult | null;
 };

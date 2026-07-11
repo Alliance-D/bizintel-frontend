@@ -178,15 +178,13 @@ export function StartPage() {
             <span className="status-pill status-under"><span className="dot" /> {t("legend_underserved")}</span>
           </div>
           <p className="mt-4 font-[var(--display-font)] text-[22px] font-bold leading-[1.18] tracking-[-0.01em]">{t("start_example_verdict")}</p>
-          <div className="mt-5">
-            <div className="cap-track">
-              <div className="cap-seg cap-open" style={{ flex: 4 }}><span className="n tnum">4</span><span className="x">{t("cap_open")}</span></div>
-              <div className="cap-seg cap-room" style={{ flex: 4 }}><span className="n tnum">+4</span><span className="x">{t("cap_room")}</span></div>
+          <div className="mt-5 capacity">
+            <div className="cap-figures">
+              <div className="cap-fig"><span className="cap-num tnum">4</span><span className="cap-cap">{t("cap_open_now")}</span></div>
+              <div className="cap-fig cap-fig-accent"><span className="cap-num tnum">+4</span><span className="cap-cap">{t("cap_room")}</span></div>
+              <div className="cap-fig cap-fig-muted"><span className="cap-num tnum">8</span><span className="cap-cap">{t("cap_can_support")}</span></div>
             </div>
-            <div className="mt-2.5 flex justify-between text-[12px] font-semibold text-[var(--ink-soft)]">
-              <span>{t("cap_open_now")} <b className="text-[var(--ink)]">4</b></span>
-              <span>{t("cap_can_support")} <b className="text-[var(--ink)]">8</b></span>
-            </div>
+            <div className="cap-rail"><span className="cap-open" style={{ width: "50%" }} /><span className="cap-room" style={{ width: "50%" }} /></div>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] font-semibold text-[var(--ink-soft)]">
             <b className="text-[var(--ink)]">{t("start_step_pick")}</b>
