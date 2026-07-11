@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Bookmark, Languages, LogIn, LogOut, Map, Menu, Search, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Bookmark, Languages, LogIn, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { AUTH_CHANGED_EVENT, AuthUser, clearSession, getUser, hasAdminAccess } from "@/lib/auth";
 import { AuthModal } from "@/components/layout/AuthModal";
 import { BrandMark } from "@/components/layout/BrandMark";
@@ -14,7 +14,6 @@ function usePrimaryNav() {
   return useMemo(() => [
     { href: "/start", label: t("nav_start"), icon: Sparkles },
     { href: "/map", label: t("nav_map"), icon: Map },
-    { href: "/insights", label: t("nav_insights"), icon: Search },
     { href: "/saved", label: t("nav_saved"), icon: Bookmark },
   ], [t]);
 }

@@ -2,20 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, MapPin, Plus, Trash2 } from "lucide-react";
-import { BUSINESS_CATEGORIES } from "@/lib/categories";
-import { buildUnifiedReport, getDistricts, getSectors, getCells, type UnifiedReportFormLocation } from "@/lib/platform-api";
-import { PageHeader } from "@/components/platform/pageHelpers";
+import { ArrowRight, ChevronDown, Loader2, MapPin, Plus, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
+import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
+import { buildUnifiedReport, getCells, getDistricts, getSectors, type UnifiedReportFormLocation } from "@/lib/platform-api";
 import { useLocale } from "@/lib/locale";
 
 type FormLocation =
-  | { mode: "point"; label: string; latitude: string; longitude: string }
-  | { mode: "area"; label: string; district: string; sector: string; cell: string };
+  | { kind: "area"; district: string; sector: string; cell: string; label: string }
+  | { kind: "point"; latitude: string; longitude: string; label: string };
 
 const MAX_LOCATIONS = 4;
+const newArea = (): FormLocation => ({ kind: "area", district: "", sector: "", cell: "", label: "" });
 
-function emptyPoint(): FormLocation {
-  return { mode: "point", label: "", latitude: "", longitude: "" };
+function Select({ label, value, disabled, placeholder, options, onChange }: {
+  label: string; value: string; disabled?: boolean; placeholder: string; options: string[]; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="sel-field">
+      <label>{label}</label>
+      <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{placeholder}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+      <ChevronDown className="chev" size={16} />
+    </div>
+  );
 }
 
 export function StartPage() {
@@ -24,222 +35,167 @@ export function StartPage() {
   const searchParams = useSearchParams();
 
   const [category, setCategory] = useState("pharmacy");
-  const [locations, setLocations] = useState<FormLocation[]>([emptyPoint()]);
-  const [budget, setBudget] = useState("");
-  const [notes, setNotes] = useState("");
+  const [locations, setLocations] = useState<FormLocation[]>([newArea()]);
   const [districts, setDistricts] = useState<string[]>([]);
-  const [sectorsByDistrict, setSectorsByDistrict] = useState<Record<string, string[]>>({});
-  const [cellsByKey, setCellsByKey] = useState<Record<string, string[]>>({});
+  const [sectorsBy, setSectorsBy] = useState<Record<string, string[]>>({});
+  const [cellsBy, setCellsBy] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [queryLoaded, setQueryLoaded] = useState(false);
+  const [seeded, setSeeded] = useState(false);
 
+  useEffect(() => { getDistricts().then((r) => setDistricts(r.districts || [])).catch(() => {}); }, []);
+
+  // Preserve deep links from the old /compare, /reports links (lat/lon/category).
   useEffect(() => {
-    getDistricts().then((res) => setDistricts(res.districts || [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (queryLoaded) return;
-    const latParam = searchParams.get("lat");
-    const lonParam = searchParams.get("lon");
-    const categoryParam = searchParams.get("category");
-    const labelParam = searchParams.get("label");
-    if (latParam && lonParam) {
-      const latValue = Number(latParam);
-      const lonValue = Number(lonParam);
-      if (Number.isFinite(latValue) && Number.isFinite(lonValue)) {
-        setCategory(categoryParam || "pharmacy");
-        setLocations([{ mode: "point", label: labelParam || "", latitude: String(latValue), longitude: String(lonValue) }]);
-      }
+    if (seeded) return;
+    const lat = searchParams.get("lat");
+    const lon = searchParams.get("lon");
+    const cat = searchParams.get("category");
+    if (cat) setCategory(cat);
+    if (lat && lon && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon))) {
+      setLocations([{ kind: "point", latitude: lat, longitude: lon, label: searchParams.get("label") || "" }]);
     }
-    setQueryLoaded(true);
-  }, [queryLoaded, searchParams]);
+    setSeeded(true);
+  }, [seeded, searchParams]);
 
-  async function loadSectors(district: string) {
-    if (!district || sectorsByDistrict[district]) return;
+  async function loadSectors(d: string) {
+    if (!d || sectorsBy[d]) return;
+    try { const r = await getSectors(d); setSectorsBy((p) => ({ ...p, [d]: r.sectors || [] })); } catch {}
+  }
+  async function loadCells(d: string, s: string) {
+    const key = `${d}::${s}`;
+    if (!d || !s || cellsBy[key]) return;
+    try { const r = await getCells(d, s); setCellsBy((p) => ({ ...p, [key]: r.cells || [] })); } catch {}
+  }
+  const update = (i: number, next: FormLocation) => setLocations((p) => p.map((l, idx) => (idx === i ? next : l)));
+
+  function valid(loc: FormLocation) {
+    if (loc.kind === "area") return loc.district.trim().length > 0;
+    const la = Number(loc.latitude), lo = Number(loc.longitude);
+    return Number.isFinite(la) && Number.isFinite(lo) && la >= -3 && la <= -1 && lo >= 28 && lo <= 31.5;
+  }
+  const validLocations = locations.filter(valid);
+
+  async function submit() {
+    if (!validLocations.length) { setError(t("start_need_location")); return; }
+    setSubmitting(true); setError(null);
     try {
-      const res = await getSectors(district);
-      setSectorsByDistrict((prev) => ({ ...prev, [district]: res.sectors || [] }));
-    } catch { /* leave empty, picker just shows no sectors */ }
-  }
-
-  async function loadCells(district: string, sector: string) {
-    const key = `${district}::${sector}`;
-    if (!district || !sector || cellsByKey[key]) return;
-    try {
-      const res = await getCells(district, sector);
-      setCellsByKey((prev) => ({ ...prev, [key]: res.cells || [] }));
-    } catch { /* leave empty */ }
-  }
-
-  function updateLocation(index: number, next: FormLocation) {
-    setLocations((prev) => prev.map((loc, i) => (i === index ? next : loc)));
-  }
-
-  function addLocation() {
-    if (locations.length >= MAX_LOCATIONS) return;
-    setLocations((prev) => [...prev, emptyPoint()]);
-  }
-
-  function removeLocation(index: number) {
-    setLocations((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function isLocationValid(loc: FormLocation): boolean {
-    if (loc.mode === "point") {
-      const lat = Number(loc.latitude);
-      const lon = Number(loc.longitude);
-      return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -3 && lat <= -1 && lon >= 28 && lon <= 31.5;
-    }
-    return loc.district.trim().length > 0;
-  }
-
-  const validLocations = locations.filter(isLocationValid);
-  const canSubmit = validLocations.length > 0 && !submitting;
-
-  async function handleSubmit() {
-    if (!canSubmit) { setError(t("start_need_location")); return; }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const payloadLocations: UnifiedReportFormLocation[] = validLocations.map((loc) =>
-        loc.mode === "point"
+      const payload: UnifiedReportFormLocation[] = validLocations.map((loc) =>
+        loc.kind === "point"
           ? { mode: "point", latitude: Number(loc.latitude), longitude: Number(loc.longitude), label: loc.label || undefined }
-          : { mode: "area", district: loc.district, sector: loc.sector || undefined, cell: loc.cell || undefined, label: loc.label || undefined }
-      );
-      const response = await buildUnifiedReport({
-        business_category: category,
-        locations: payloadLocations,
-        budget: budget.trim() || undefined,
-        notes: notes.trim() || undefined,
-        locale,
-      });
-      if (response.report_id != null) {
-        router.push(`/report/${response.report_id}`);
-      } else {
-        setError(t("start_error"));
-      }
-    } catch {
-      setError(t("start_error"));
-    } finally {
-      setSubmitting(false);
-    }
+          : { mode: "area", district: loc.district, sector: loc.sector || undefined, cell: loc.cell || undefined, label: loc.label || undefined });
+      const res = await buildUnifiedReport({ business_category: category, locations: payload, locale });
+      if (res.report_id != null) router.push(`/report/${res.report_id}`);
+      else setError(t("start_error"));
+    } catch { setError(t("start_error")); }
+    finally { setSubmitting(false); }
   }
 
   return (
-    <main className="app-container py-8 lg:py-12">
-      <PageHeader eyebrow={t("start_eyebrow")} title={t("start_title")} text={t("start_subtitle")} />
+    <main className="app-container py-10 lg:py-16">
+      <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_.95fr]">
+        {/* form */}
+        <div>
+          <div className="kicker">{t("start_eyebrow")}</div>
+          <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-black leading-[1.05] tracking-[-0.02em] text-[var(--ink)]" style={{ maxWidth: "15ch" }}>{t("start_h1")}</h1>
+          <p className="mt-4 max-w-[46ch] text-[clamp(15px,1.5vw,17px)] text-[var(--ink-soft)]">{t("start_sub")}</p>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <label className="grid gap-2 text-sm font-bold text-slate-600">
-            {t("start_category_label")}
-            <select className="input-modern" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-            </select>
-          </label>
-
-          <div className="mt-6 space-y-5">
-            {locations.map((loc, index) => (
-              <div key={index} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="flex items-center gap-2 font-black text-slate-950">
-                    <MapPin size={16} className="text-[var(--brand)]" />
-                    {t("start_location_n").replace("{n}", String(index + 1))}
-                  </h3>
-                  {locations.length > 1 && (
-                    <button type="button" onClick={() => removeLocation(index)} className="btn-secondary !px-3 !py-1.5 text-xs">
-                      <Trash2 size={14} /> {t("start_remove_location")}
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateLocation(index, loc.mode === "point" ? loc : { mode: "point", label: loc.label, latitude: "", longitude: "" })}
-                    className={loc.mode === "point" ? "btn-primary !px-4 !py-2 text-xs" : "btn-secondary !px-4 !py-2 text-xs"}
-                  >
-                    {t("start_mode_point")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateLocation(index, loc.mode === "area" ? loc : { mode: "area", label: loc.label, district: "", sector: "", cell: "" })}
-                    className={loc.mode === "area" ? "btn-primary !px-4 !py-2 text-xs" : "btn-secondary !px-4 !py-2 text-xs"}
-                  >
-                    {t("start_mode_area")}
-                  </button>
-                </div>
-
-                {loc.mode === "point" ? (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-slate-500">{t("start_point_hint")}</p>
-                    <div className="form-grid-2">
-                      <input className="input-modern" placeholder={t("start_latitude_label")} value={loc.latitude} onChange={(e) => updateLocation(index, { ...loc, latitude: e.target.value })} />
-                      <input className="input-modern" placeholder={t("start_longitude_label")} value={loc.longitude} onChange={(e) => updateLocation(index, { ...loc, longitude: e.target.value })} />
-                    </div>
-                    <input className="input-modern" placeholder={t("start_label_placeholder")} value={loc.label} onChange={(e) => updateLocation(index, { ...loc, label: e.target.value })} />
-                  </div>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-slate-500">{t("start_area_hint")}</p>
-                    <select
-                      className="input-modern"
-                      value={loc.district}
-                      onChange={(e) => { const district = e.target.value; updateLocation(index, { ...loc, district, sector: "", cell: "" }); loadSectors(district); }}
-                    >
-                      <option value="">{t("start_district_placeholder")}</option>
-                      {districts.map((d) => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select
-                      className="input-modern"
-                      value={loc.sector}
-                      disabled={!loc.district}
-                      onChange={(e) => { const sector = e.target.value; updateLocation(index, { ...loc, sector, cell: "" }); loadCells(loc.district, sector); }}
-                    >
-                      <option value="">{t("start_sector_all")}</option>
-                      {(sectorsByDistrict[loc.district] || []).map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <select
-                      className="input-modern"
-                      value={loc.cell}
-                      disabled={!loc.sector}
-                      onChange={(e) => updateLocation(index, { ...loc, cell: e.target.value })}
-                    >
-                      <option value="">{t("start_cell_all")}</option>
-                      {(cellsByKey[`${loc.district}::${loc.sector}`] || []).map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <input className="input-modern" placeholder={t("start_label_placeholder")} value={loc.label} onChange={(e) => updateLocation(index, { ...loc, label: e.target.value })} />
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="mt-7">
+            <div className="flex items-baseline gap-2 text-[13px] font-bold"><span className="font-[var(--display-font)] text-[15px] text-[var(--brand)]">1</span> {t("start_q_business")}</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {BUSINESS_CATEGORIES.map((c) => (
+                <button key={c.key} type="button" className={category === c.key ? "chip-btn on" : "chip-btn"} onClick={() => setCategory(c.key)}>{c.label}</button>
+              ))}
+            </div>
           </div>
 
-          {locations.length < MAX_LOCATIONS ? (
-            <button type="button" onClick={addLocation} className="btn-secondary mt-4 w-full">
-              <Plus size={16} /> {t("start_add_location")}
-            </button>
-          ) : (
-            <p className="mt-4 text-xs font-bold text-slate-500">{t("start_max_locations_reached")}</p>
-          )}
-        </section>
+          <div className="mt-6">
+            <div className="flex items-baseline gap-2 text-[13px] font-bold"><span className="font-[var(--display-font)] text-[15px] text-[var(--brand)]">2</span> {t("start_q_area")}</div>
+            <div className="mt-3 flex flex-col gap-3">
+              {locations.map((loc, i) => (
+                <div key={i} className="panel p-3.5">
+                  {locations.length > 1 && (
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-[12px] font-bold text-[var(--ink-soft)]"><MapPin size={13} className="text-[var(--brand)]" /> {t("start_location_n").replace("{n}", String(i + 1))}</span>
+                      <button type="button" onClick={() => setLocations((p) => p.filter((_, idx) => idx !== i))} className="flex items-center gap-1 text-[12px] font-bold text-[var(--muted)] hover:text-[var(--clay)]"><Trash2 size={13} /> {t("start_remove_location")}</button>
+                    </div>
+                  )}
+                  {loc.kind === "area" ? (
+                    <>
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                        <Select label={t("start_district_label")} value={loc.district} placeholder={t("start_district_placeholder")} options={districts}
+                          onChange={(v) => { update(i, { ...loc, district: v, sector: "", cell: "" }); loadSectors(v); }} />
+                        <Select label={t("start_sector_label")} value={loc.sector} disabled={!loc.district} placeholder={t("start_sector_all")} options={sectorsBy[loc.district] || []}
+                          onChange={(v) => { update(i, { ...loc, sector: v, cell: "" }); loadCells(loc.district, v); }} />
+                        <Select label={t("start_cell_label")} value={loc.cell} disabled={!loc.sector} placeholder={t("start_cell_all")} options={cellsBy[`${loc.district}::${loc.sector}`] || []}
+                          onChange={(v) => update(i, { ...loc, cell: v })} />
+                      </div>
+                      <button type="button" onClick={() => update(i, { kind: "point", latitude: "", longitude: "", label: loc.label })} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--brand-2)]">
+                        <SlidersHorizontal size={14} /> {t("start_advanced")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-2.5 text-[12.5px] text-[var(--muted)]">{t("start_point_hint")}</p>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <input className="input-modern" placeholder={t("start_latitude_label")} value={loc.latitude} onChange={(e) => update(i, { ...loc, latitude: e.target.value })} />
+                        <input className="input-modern" placeholder={t("start_longitude_label")} value={loc.longitude} onChange={(e) => update(i, { ...loc, longitude: e.target.value })} />
+                      </div>
+                      <button type="button" onClick={() => update(i, newArea())} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--brand-2)]">
+                        <MapPin size={14} /> {t("start_back_to_area")}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            {locations.length < MAX_LOCATIONS ? (
+              <button type="button" onClick={() => setLocations((p) => [...p, newArea()])} className="btn-secondary mt-3 w-full"><Plus size={16} /> {t("start_add_location")}</button>
+            ) : (
+              <p className="mt-3 text-[12.5px] font-semibold text-[var(--muted)]">{t("start_max_locations_reached")}</p>
+            )}
+          </div>
 
-        <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <label className="grid gap-2 text-sm font-bold text-slate-600">
-            {t("start_budget_label")}
-            <input className="input-modern" placeholder={t("start_budget_placeholder")} value={budget} onChange={(e) => setBudget(e.target.value)} />
-          </label>
-          <label className="mt-4 grid gap-2 text-sm font-bold text-slate-600">
-            {t("start_notes_label")}
-            <textarea className="input-modern min-h-[96px]" placeholder={t("start_notes_placeholder")} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
-
-          <button type="button" onClick={handleSubmit} disabled={!canSubmit} className="btn-primary mt-6 w-full">
-            {submitting ? <><Loader2 size={16} className="animate-spin" /> {t("start_submitting")}</> : t("start_submit")}
+          <button type="button" onClick={submit} disabled={submitting} className="btn-primary mt-6">
+            {submitting ? <><Loader2 size={17} className="animate-spin" /> {t("start_submitting")}</> : <>{t("start_submit")} <ArrowRight size={17} /></>}
           </button>
-          {error && <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-700">{error}</p>}
-        </aside>
+          {error && <p className="mt-3 rounded-2xl bg-[var(--clay-wash)] p-3 text-[13.5px] font-semibold text-[var(--clay)]">{error}</p>}
+
+          <div className="mt-9 flex items-start gap-2.5 border-t border-[var(--line-2)] pt-5 text-[12.5px] text-[var(--muted)]" style={{ maxWidth: "52ch" }}>
+            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--brand)]" />
+            <span>{t("start_trust")}</span>
+          </div>
+        </div>
+
+        {/* example preview */}
+        <div className="panel p-6 shadow-[0_24px_44px_-32px_rgba(20,35,28,.4)]">
+          <div className="sec-label">{t("start_example")}</div>
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <div className="text-[15px] font-extrabold">Kimironko</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-[var(--muted)]">Gasabo · {categoryLabel(category)}</div>
+            </div>
+            <span className="status-pill status-under"><span className="dot" /> {t("legend_underserved")}</span>
+          </div>
+          <p className="mt-4 font-[var(--display-font)] text-[22px] font-bold leading-[1.18] tracking-[-0.01em]">{t("start_example_verdict")}</p>
+          <div className="mt-5">
+            <div className="cap-track">
+              <div className="cap-seg cap-open" style={{ flex: 4 }}><span className="n tnum">4</span><span className="x">{t("cap_open")}</span></div>
+              <div className="cap-seg cap-room" style={{ flex: 4 }}><span className="n tnum">+4</span><span className="x">{t("cap_room")}</span></div>
+            </div>
+            <div className="mt-2.5 flex justify-between text-[12px] font-semibold text-[var(--ink-soft)]">
+              <span>{t("cap_open_now")} <b className="text-[var(--ink)]">4</b></span>
+              <span>{t("cap_can_support")} <b className="text-[var(--ink)]">8</b></span>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] font-semibold text-[var(--ink-soft)]">
+            <b className="text-[var(--ink)]">{t("start_step_pick")}</b>
+            <ArrowRight size={14} className="text-[var(--muted)]" />
+            <b className="text-[var(--ink)]">{t("start_step_area")}</b>
+            <ArrowRight size={14} className="text-[var(--muted)]" />
+            <b className="text-[var(--ink)]">{t("start_step_read")}</b>
+          </div>
+        </div>
       </div>
     </main>
   );

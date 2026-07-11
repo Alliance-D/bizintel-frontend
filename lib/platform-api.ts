@@ -93,6 +93,7 @@ export type PlatformAssessment = {
     commercial_activity_score: number;
     competition_pressure: number;
   };
+  signals?: LocationSignals;
   competition?: {
     within_300m: number;
     within_500m: number;
@@ -103,13 +104,32 @@ export type PlatformAssessment = {
   explanation?: any;
 };
 
-export type NearbyCompetitor = {
+export type LocationSignals = {
+  people_within_1km: number | null;
+  population_density_1000m: number | null;
+  sector_population: number | null;
+  commercial_activity_level: string;
+  commercial_poi_count_500m: number | null;
+  complementary_poi_count_500m: number | null;
+  anchor_count_1000m: number | null;
+  bus_stop_count_500m: number | null;
+  nearest_bus_stop_m: number | null;
+  school_count_1000m: number | null;
+  health_facility_count_1000m: number | null;
+  market_distance_m: number | null;
+  expected_count: number | null;
+  observed_count: number | null;
+};
+
+export type NearbyPoi = {
   name: string | null;
   category_key: string;
   latitude: number;
   longitude: number;
   distance_m: number;
 };
+
+export type NearbyCompetitor = NearbyPoi;
 
 export type VillageBoundary = {
   district: string | null;
@@ -126,6 +146,8 @@ export type UnifiedReportPointEntry = {
   longitude: number;
   assessment: PlatformAssessment;
   competitors: NearbyCompetitor[];
+  anchors?: NearbyPoi[];
+  complementary?: NearbyPoi[];
   village_boundary: VillageBoundary;
   narrative: AdvisorResponse;
 };
