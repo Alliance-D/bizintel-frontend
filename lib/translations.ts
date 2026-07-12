@@ -513,10 +513,10 @@ export const en = {
   // verdict headlines ({place}, {cat})
   report_verdict_underserved: "{place} has clear room for another {cat}.",
   report_verdict_room: "{place} has some room for another {cat}.",
-  report_verdict_balanced: "{place} is fairly balanced for {cat}s.",
-  report_verdict_saturated: "{place} already has about as many {cat}s as it can support.",
+  report_verdict_balanced: "{place} is fairly balanced for {cats}.",
+  report_verdict_saturated: "{place} already has about as many {cats} as it can support.",
   report_verdict_thin: "{place} shows little demand for a {cat} right now.",
-  report_say: "The area looks able to support about {expected} {cat}s; {observed} are open within a kilometre.",
+  report_say: "The area looks able to support about {expected} {cats}; {observed} are open within a kilometre.",
   report_status_low_demand: "Low demand",
   // gap band
   report_gap_band_heading: "What the area can support vs. what's open",
@@ -538,7 +538,7 @@ export const en = {
   report_signal_people: "People nearby",
   report_within_1km: "within 1 km",
   report_signal_activity: "Commercial activity",
-  report_signal_competitors: "{cat}s already open",
+  report_signal_competitors: "{cats} already open",
   report_signal_anchors: "Foot-traffic anchors",
   report_signal_estimate: "Model estimate",
   report_why_heading: "Why this location",
@@ -560,7 +560,7 @@ export const en = {
   // location naming
   loc_near: "near {name}",
   // map legend
-  report_legend_competitors: "Other {cat}s",
+  report_legend_competitors: "Other {cats}",
   report_legend_transport: "Bus stops",
   report_legend_anchors: "Markets, schools & clinics",
   report_legend_markets: "Markets",
@@ -568,13 +568,13 @@ export const en = {
   report_legend_clinics: "Clinics",
   report_legend_roads: "Roads",
   // nearby
-  report_nearby_competitors: "{cat}s already open",
+  report_nearby_competitors: "{cats} already open",
   report_nearby_anchors: "Draws people past your door",
   report_unnamed: "Unnamed",
   // reliability
   report_reliability_heading: "Reliability",
   report_based_on: "Based on",
-  report_based_on_value: "mapped {cat}s within 1 km",
+  report_based_on_value: "mapped {cats} within 1 km",
   report_caveat: "Caveat",
   report_caveat_value: "informal shops uncounted",
   // comparison

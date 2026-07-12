@@ -14,76 +14,12 @@ import {
 // cache it, so a toggle back and forth doesn't keep hitting the model.
 const narrativeCache = new Map<string, AdvisorResponse>();
 import { useAsyncData, safeNumber } from "@/components/platform/pageHelpers";
-import { categoryLabel } from "@/lib/categories";
 import { PoiGlyph, POI_GLYPHS, COMPETITOR_COLOR, ANCHOR_COLORS, competitorGlyphKey } from "@/components/platform/poiGlyphs";
+import { situationFromCounts, fmt, catLabel, catPluralEn, activityLabel, nearLabel, type T } from "@/lib/report-format";
 import { useLocale } from "@/lib/locale";
 import type { TranslationKey } from "@/lib/translations";
 
 const ReportMap = dynamic(() => import("@/components/platform/ReportMap").then((m) => m.ReportMap), { ssr: false });
-
-type T = (k: TranslationKey) => string;
-
-type Situation = { pill: string; labelKey: TranslationKey; verdictKey: TranslationKey; badgeKey: TranslationKey };
-
-// Derives the situation shown to the user from the ABSOLUTE expected-vs-observed
-// counts - the same numbers the capacity bar and narrative use - so the verdict,
-// the status pill and the bar can never contradict each other. (The gap
-// PERCENTILE is a city-wide relative ranking, right for the map/insights, but it
-// can call a slightly-oversupplied cell "underserved" just because it ranks high
-// within its category - which would fight the bar that plainly shows it over
-// capacity.)
-function situationFromCounts(expected: number, observed: number): Situation {
-  const room = expected - observed;
-  if (expected < 0.75 && Math.abs(room) < 1)
-    return { pill: "status-balanced", labelKey: "report_status_low_demand", verdictKey: "report_verdict_thin", badgeKey: "report_gap_low_badge" };
-  if (room <= -0.75)
-    return { pill: "status-saturated", labelKey: "legend_saturated", verdictKey: "report_verdict_saturated", badgeKey: "report_gap_over_badge" };
-  if (room >= 1.5)
-    return { pill: "status-under", labelKey: "legend_underserved", verdictKey: "report_verdict_underserved", badgeKey: "report_gap_room_badge" };
-  if (room >= 0.5)
-    return { pill: "status-emerging", labelKey: "legend_room_to_grow", verdictKey: "report_verdict_room", badgeKey: "report_gap_room_badge" };
-  return { pill: "status-balanced", labelKey: "legend_balanced", verdictKey: "report_verdict_balanced", badgeKey: "report_gap_balanced_badge" };
-}
-
-function fmt(n: number | null | undefined, digits = 0): string {
-  if (n == null) return "—";
-  return Number(n).toLocaleString(undefined, { maximumFractionDigits: digits });
-}
-
-// Category, activity and landmark labels are translated on the client from
-// stable tokens (a category key, an English/Kinyarwanda level word, a bare
-// landmark name) rather than from prose baked at report-build time - so they
-// flip instantly on the language toggle without waiting on a re-fetch.
-const CAT_KEY: Record<string, TranslationKey> = {
-  pharmacy: "cat_pharmacy", restaurant: "cat_restaurant", cafe: "cat_cafe", grocery: "cat_grocery", salon: "cat_salon",
-};
-function catLabel(key: string | undefined, t: T): string {
-  const tk = key ? CAT_KEY[key] : undefined;
-  return tk ? t(tk) : categoryLabel(key || "");
-}
-
-const ACTIVITY_KEY: Record<string, TranslationKey> = {
-  high: "activity_high", medium: "activity_medium", low: "activity_low",
-  byinshi: "activity_high", bigereranije: "activity_medium", bike: "activity_low",
-};
-function activityLabel(v: string | null | undefined, t: T): string {
-  if (!v) return "—";
-  const tk = ACTIVITY_KEY[v.trim().toLowerCase()];
-  return tk ? t(tk) : v;
-}
-
-// The backend returns a bare landmark name (e.g. "Kubadive"); the "near"/"hafi ya"
-// connector is added here so it translates. The strip guards against older
-// reports that baked the connector into the stored name.
-function stripNear(s: string | null | undefined): string | null {
-  if (!s) return null;
-  const n = s.replace(/^(near\s+|hafi ya\s+)/i, "").trim();
-  return n || null;
-}
-function nearLabel(s: string | null | undefined, t: T): string | null {
-  const n = stripNear(s);
-  return n ? t("loc_near").replace("{name}", n) : null;
-}
 
 function CapacityBar({ expected, observed, t }: { expected: number; observed: number; t: T }) {
   const over = observed > expected;
@@ -143,11 +79,11 @@ function NearbyGroup({ color, title, items, t }: { color: string; title: string;
   );
 }
 
-function MapLegend({ cat, catKey, t }: { cat: string; catKey: string; t: T }) {
+function MapLegend({ cats, catKey, t }: { cats: string; catKey: string; t: T }) {
   const compKey = competitorGlyphKey(catKey);
   return (
     <>
-      <span className="flex items-center gap-1.5"><PoiGlyph color={COMPETITOR_COLOR} glyph={POI_GLYPHS[compKey]} size={17} /> {t("report_legend_competitors").replace("{cat}", cat)}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={COMPETITOR_COLOR} glyph={POI_GLYPHS[compKey]} size={17} /> {t("report_legend_competitors").replace("{cats}", cats).replace("{cat}", cats)}</span>
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.transport} glyph={POI_GLYPHS.transport} size={17} /> {t("report_legend_transport")}</span>
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.market} glyph={POI_GLYPHS.market} size={17} /> {t("report_legend_markets")}</span>
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.school} glyph={POI_GLYPHS.school} size={17} /> {t("report_legend_schools")}</span>
@@ -156,7 +92,7 @@ function MapLegend({ cat, catKey, t }: { cat: string; catKey: string; t: T }) {
   );
 }
 
-function MapModal({ entry, cat, t, onClose }: { entry: UnifiedReportPointEntry; cat: string; t: T; onClose: () => void }) {
+function MapModal({ entry, cats, t, onClose }: { entry: UnifiedReportPointEntry; cats: string; t: T; onClose: () => void }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
@@ -171,7 +107,7 @@ function MapModal({ entry, cat, t, onClose }: { entry: UnifiedReportPointEntry; 
           <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]" aria-label="Close"><X size={16} /></button>
         </div>
         <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={560} interactive category={entry.assessment.business_category} />
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-3"><MapLegend cat={cat} catKey={entry.assessment.business_category} t={t} /></div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-3"><MapLegend cats={cats} catKey={entry.assessment.business_category} t={t} /></div>
       </div>
     </div>
   );
@@ -183,6 +119,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
   const overall = a.overall || ({} as any);
   const sig = a.signals;
   const cat = catLabel(a.business_category, t).toLowerCase();
+  const cats = locale.toLowerCase().startsWith("rw") ? cat : catPluralEn(cat);
   const expected = safeNumber(overall.expected_count);
   const observed = safeNumber(overall.observed_count);
   const room = expected - observed;
@@ -230,11 +167,11 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
         <div className="border-b border-[var(--line-2)] pb-6">
           <div className="text-[12.5px] font-bold uppercase tracking-[0.05em] text-[var(--muted)]">{cat}{context ? ` · ${context}` : ""}</div>
           <h2 className="mt-3 text-[clamp(24px,3vw,34px)] font-black leading-[1.1] tracking-[-0.02em]" style={{ maxWidth: "20ch" }}>
-            {t(sit.verdictKey).replace("{place}", place).replace("{cat}", cat)}
+            {t(sit.verdictKey).replace("{place}", place).replace("{cats}", cats).replace("{cat}", cat)}
           </h2>
           <div className="mt-4"><span className={`status-pill ${sit.pill}`}><span className="dot" /> {t(sit.labelKey)}</span></div>
           <p className="mt-4 max-w-[62ch] text-[15.5px] text-[var(--ink-soft)]">
-            {t("report_say").replace("{expected}", fmt(expected, 0)).replace("{observed}", fmt(observed, 0)).replace("{cat}", cat)}
+            {t("report_say").replace("{expected}", fmt(expected, 0)).replace("{observed}", fmt(observed, 0)).replace("{cats}", cats).replace("{cat}", cat)}
           </p>
         </div>
 
@@ -255,7 +192,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
             <div className="mt-3">
               <Signal label={t("report_signal_people")} value={fmt(sig?.people_within_1km, 0)} unit={t("report_within_1km")} />
               <Signal label={t("report_signal_activity")} value={activityLabel(sig?.commercial_activity_level, t)} />
-              <Signal label={t("report_signal_competitors").replace("{cat}", cat)} value={fmt(observed, 0)} unit={a.competition ? undefined : undefined} />
+              <Signal label={t("report_signal_competitors").replace("{cats}", cats).replace("{cat}", cat)} value={fmt(observed, 0)} unit={a.competition ? undefined : undefined} />
               <Signal label={t("report_signal_anchors")} value={fmt(sig?.anchor_count_1000m, 0)} unit={t("report_within_1km")} />
               <Signal label={t("report_signal_estimate")} value={`≈ ${fmt(expected, 1)}`} unit={cat} />
             </div>
@@ -291,11 +228,11 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
               <button type="button" onClick={() => setMapOpen(true)} className="mt-3 block w-full cursor-pointer text-left" aria-label={t("report_map_enlarge")}>
                 <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={280} category={a.business_category} />
               </button>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cat={cat} catKey={a.business_category} t={t} /></div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cats={cats} catKey={a.business_category} t={t} /></div>
             </div>
 
             <div className="panel p-4">
-              <NearbyGroup color="var(--clay)" title={t("report_nearby_competitors").replace("{cat}", cat)} items={entry.competitors} t={t} />
+              <NearbyGroup color="var(--clay)" title={t("report_nearby_competitors").replace("{cats}", cats).replace("{cat}", cat)} items={entry.competitors} t={t} />
               <NearbyGroup color="var(--brand)" title={t("report_nearby_anchors")} items={footTraffic} t={t} />
             </div>
 
@@ -303,7 +240,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
               <div className="sec-label mb-3">{t("report_reliability_heading")}</div>
               <div className="flex flex-col gap-2.5 text-[13.5px]">
                 <div className="flex justify-between"><span className="text-[var(--ink-soft)]">{t("report_confidence_label")}</span><b>{fmt(overall.confidence_score, 0)}%</b></div>
-                <div className="flex justify-between"><span className="text-[var(--ink-soft)]">{t("report_based_on")}</span><b>{t("report_based_on_value").replace("{cat}", cat)}</b></div>
+                <div className="flex justify-between"><span className="text-[var(--ink-soft)]">{t("report_based_on")}</span><b>{t("report_based_on_value").replace("{cats}", cats).replace("{cat}", cat)}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-[var(--ink-soft)]">{t("report_caveat")}</span><b className="text-right">{t("report_caveat_value")}</b></div>
               </div>
             </div>
@@ -311,7 +248,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
         </div>
       </div>
     </article>
-    {mapOpen && <MapModal entry={entry} cat={cat} t={t} onClose={() => setMapOpen(false)} />}
+    {mapOpen && <MapModal entry={entry} cats={cats} t={t} onClose={() => setMapOpen(false)} />}
     </>
   );
 }
