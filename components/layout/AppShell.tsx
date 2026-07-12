@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Bookmark, Languages, LogIn, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Languages, LogIn, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { AUTH_CHANGED_EVENT, AuthUser, clearSession, getUser, hasAdminAccess } from "@/lib/auth";
 import { AuthModal } from "@/components/layout/AuthModal";
 import { BrandMark } from "@/components/layout/BrandMark";
@@ -11,10 +11,12 @@ import { useLocale } from "@/lib/locale";
 
 function usePrimaryNav() {
   const { t } = useLocale();
+  // Saved/Watchlist is hidden from the primary nav - the core flow is
+  // form -> report, and reports are addressable by URL. The /saved route
+  // still exists for anyone with a direct link.
   return useMemo(() => [
     { href: "/start", label: t("nav_start"), icon: Sparkles },
     { href: "/map", label: t("nav_map"), icon: Map },
-    { href: "/saved", label: t("nav_saved"), icon: Bookmark },
   ], [t]);
 }
 
@@ -164,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">{t("footer_tagline")}</p>
             </div>
             <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_product")}</strong><Link href="/start">{t("nav_start")}</Link><Link href="/map">{t("nav_map")}</Link><Link href="/insights">{t("nav_insights")}</Link></div>
-            <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_workspace")}</strong><Link href="/saved">{t("nav_saved")}</Link><Link href="/expansion-planner">{t("footer_expansion_planner")}</Link><Link href="/field-validation">{t("footer_field_checks")}</Link></div>
+            <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_workspace")}</strong><Link href="/expansion-planner">{t("footer_expansion_planner")}</Link><Link href="/field-validation">{t("footer_field_checks")}</Link></div>
           </div>
         </footer>
       )}

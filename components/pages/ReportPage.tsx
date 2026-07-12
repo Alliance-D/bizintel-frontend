@@ -167,7 +167,7 @@ function MapModal({ entry, cat, t, onClose }: { entry: UnifiedReportPointEntry; 
           <span className="font-[var(--display-font)] text-[16px] font-semibold">{t("report_map_heading")}</span>
           <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]" aria-label="Close"><X size={16} /></button>
         </div>
-        <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={560} interactive />
+        <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={560} interactive category={entry.assessment.business_category} />
         <div className="grid grid-cols-2 gap-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-4"><MapLegend cat={cat} t={t} /></div>
       </div>
     </div>
@@ -286,7 +286,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
                 <button type="button" onClick={() => setMapOpen(true)} className="flex items-center gap-1 text-[12px] font-semibold text-[var(--brand-2)]"><Maximize2 size={12} /> {t("report_map_enlarge")}</button>
               </div>
               <button type="button" onClick={() => setMapOpen(true)} className="mt-3 block w-full cursor-pointer text-left" aria-label={t("report_map_enlarge")}>
-                <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={280} />
+                <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={280} category={a.business_category} />
               </button>
               <div className="grid grid-cols-2 gap-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cat={cat} t={t} /></div>
             </div>
