@@ -15,6 +15,7 @@ import {
 const narrativeCache = new Map<string, AdvisorResponse>();
 import { useAsyncData, safeNumber } from "@/components/platform/pageHelpers";
 import { categoryLabel } from "@/lib/categories";
+import { PoiGlyph, POI_GLYPHS, COMPETITOR_COLOR, ANCHOR_COLORS, competitorGlyphKey } from "@/components/platform/poiGlyphs";
 import { useLocale } from "@/lib/locale";
 import type { TranslationKey } from "@/lib/translations";
 
@@ -142,13 +143,15 @@ function NearbyGroup({ color, title, items, t }: { color: string; title: string;
   );
 }
 
-function MapLegend({ cat, t }: { cat: string; t: T }) {
+function MapLegend({ cat, catKey, t }: { cat: string; catKey: string; t: T }) {
+  const compKey = competitorGlyphKey(catKey);
   return (
     <>
-      <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full" style={{ background: "var(--clay)" }} /> {t("report_legend_competitors").replace("{cat}", cat)}</span>
-      <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-[2px]" style={{ background: "var(--brand)" }} /> {t("report_legend_transport")}</span>
-      <span className="flex items-center gap-1.5"><i className="size-2.5 rotate-45" style={{ background: "var(--amber)" }} /> {t("report_legend_anchors")}</span>
-      <span className="flex items-center gap-1.5"><i className="inline-block h-[3px] w-3.5 rounded" style={{ background: "#CFD3C6" }} /> {t("report_legend_roads")}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={COMPETITOR_COLOR} glyph={POI_GLYPHS[compKey]} size={17} /> {t("report_legend_competitors").replace("{cat}", cat)}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.transport} glyph={POI_GLYPHS.transport} size={17} /> {t("report_legend_transport")}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.market} glyph={POI_GLYPHS.market} size={17} /> {t("report_legend_markets")}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.school} glyph={POI_GLYPHS.school} size={17} /> {t("report_legend_schools")}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.health} glyph={POI_GLYPHS.health} size={17} /> {t("report_legend_clinics")}</span>
     </>
   );
 }
@@ -168,7 +171,7 @@ function MapModal({ entry, cat, t, onClose }: { entry: UnifiedReportPointEntry; 
           <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]" aria-label="Close"><X size={16} /></button>
         </div>
         <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={560} interactive category={entry.assessment.business_category} />
-        <div className="grid grid-cols-2 gap-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-4"><MapLegend cat={cat} t={t} /></div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-3"><MapLegend cat={cat} catKey={entry.assessment.business_category} t={t} /></div>
       </div>
     </div>
   );
@@ -288,7 +291,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
               <button type="button" onClick={() => setMapOpen(true)} className="mt-3 block w-full cursor-pointer text-left" aria-label={t("report_map_enlarge")}>
                 <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={280} category={a.business_category} />
               </button>
-              <div className="grid grid-cols-2 gap-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cat={cat} t={t} /></div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cat={cat} catKey={a.business_category} t={t} /></div>
             </div>
 
             <div className="panel p-4">

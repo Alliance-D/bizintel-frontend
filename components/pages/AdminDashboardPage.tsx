@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Activity, AlertTriangle, CheckCircle2, Database, PlayCircle, RefreshCw, SearchCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { categoryLabel } from "@/lib/categories";
 import {
@@ -15,7 +16,7 @@ import {
   triggerFeatureRebuild,
   triggerRetrain,
 } from "@/lib/platform-api";
-import { getUser } from "@/lib/auth";
+import { getUser, hasAdminAccess } from "@/lib/auth";
 
 type AnyObj = Record<string, any>;
 
@@ -47,6 +48,16 @@ export function AdminDashboardPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const isSuperAdmin = getUser()?.role === "super_admin";
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+
+  // Admin is the only authenticated surface: an unauthenticated visitor is sent
+  // to the login page (which returns here on success) instead of seeing the
+  // dashboard fail its API calls.
+  useEffect(() => {
+    if (!hasAdminAccess()) { router.replace("/login?next=/admin"); return; }
+    setAuthorized(true);
+  }, [router]);
 
   const refresh = useCallback(async () => {
     const [statusRes, versionsRes, importanceRes, datasetsRes, auditRes] = await Promise.allSettled([
@@ -64,7 +75,7 @@ export function AdminDashboardPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (authorized) refresh(); }, [authorized, refresh]);
 
   // Poll while a background job is running so the status card updates without a manual refresh.
   useEffect(() => {
@@ -108,6 +119,8 @@ export function AdminDashboardPage() {
   const health = status?.data_health?.checks || {};
   const activeModel = status?.model?.active_model;
   const job = status?.job;
+
+  if (!authorized) return <main className="app-container py-20 text-center text-sm font-bold text-slate-500">…</main>;
 
   return (
     <main className="app-container py-8 lg:py-12">

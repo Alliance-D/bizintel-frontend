@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Languages, LogIn, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Languages, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { AUTH_CHANGED_EVENT, AuthUser, clearSession, getUser, hasAdminAccess } from "@/lib/auth";
-import { AuthModal } from "@/components/layout/AuthModal";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { useLocale } from "@/lib/locale";
 
@@ -54,18 +53,15 @@ function useAuthUser() {
   return user;
 }
 
-function AccountControl({ user, onSignInClick }: { user: AuthUser | null; onSignInClick: () => void }) {
+function AccountControl({ user }: { user: AuthUser | null }) {
   const router = useRouter();
   const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  if (!user) {
-    return (
-      <button onClick={onSignInClick} className="btn-primary px-4 py-2.5 text-sm">
-        <LogIn size={16} /> {t("sign_in")}
-      </button>
-    );
-  }
+  // No public sign-in: the app is used without an account (reports are reached
+  // by URL). Only admins authenticate, via /admin -> /login. When an admin is
+  // signed in, their account menu (with the admin link) shows below.
+  if (!user) return null;
 
   function signOut() {
     clearSession();
@@ -103,7 +99,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
   const nav = usePrimaryNav();
   const showFooter = pathname === "/" || !appRoutesWithoutFooter.has(pathname);
   const user = useAuthUser();
@@ -122,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="hidden items-center gap-2 lg:flex">
             <LocaleToggle />
-            <AccountControl user={user} onSignInClick={() => setAuthOpen(true)} />
+            <AccountControl user={user} />
           </div>
 
           <button onClick={() => setOpen(true)} className="grid size-11 place-items-center rounded-2xl border border-[var(--line)] bg-white xl:hidden" aria-label="Open menu"><Menu /></button>
@@ -148,9 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                   <button onClick={() => { clearSession(); setOpen(false); }} className="mt-3 flex items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-600"><LogOut size={18} /> {t("sign_out")}</button>
                 </>
-              ) : (
-                <button onClick={() => { setOpen(false); setAuthOpen(true); }} className="mt-3 flex items-center gap-3 rounded-2xl bg-[#10231f] px-4 py-3 text-sm font-black text-white"><LogIn size={18} /> {t("sign_in")}</button>
-              )}
+              ) : null}
             </nav>
           </div>
         </div>
@@ -171,7 +164,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </footer>
       )}
 
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   );
 }
