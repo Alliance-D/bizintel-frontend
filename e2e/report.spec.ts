@@ -1,10 +1,29 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, request } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
 // Screenshots land outside both code repos so they can be dropped straight into
 // the report without being committed to the app.
 const SHOTS = "E:/bizintel/report_assets";
 mkdirSync(SHOTS, { recursive: true });
+
+// These are integration tests: they drive the real UI against a running backend
+// (:8000) and a populated database. If the API isn't up, skip with a clear
+// message instead of failing every test with a raw connection error.
+const API = process.env.E2E_API_URL || "http://127.0.0.1:8000";
+let backendUp = false;
+test.beforeAll(async () => {
+  try {
+    const ctx = await request.newContext();
+    const res = await ctx.get(`${API}/api/v1/health`, { timeout: 4000 });
+    backendUp = res.ok();
+    await ctx.dispose();
+  } catch {
+    backendUp = false;
+  }
+});
+test.beforeEach(() => {
+  test.skip(!backendUp, `Backend API not reachable at ${API} - start the backend + database first (see DEPLOYMENT.md), then re-run.`);
+});
 
 // A location with real scored data nearby (central Kigali).
 const LAT = "-1.9536";

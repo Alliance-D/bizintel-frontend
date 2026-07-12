@@ -14,4 +14,13 @@ export default defineConfig({
     trace: "off",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Auto-start the frontend for the run (reused if you already have one up).
+  // The BACKEND (:8000) and its database must be started separately - the
+  // spec skips with a clear message if the API isn't reachable.
+  webServer: {
+    command: "npm run dev",
+    url: "http://127.0.0.1:3000",
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
 });
