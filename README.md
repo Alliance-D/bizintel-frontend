@@ -1,14 +1,18 @@
 # BizIntel frontend
 
 Next.js frontend for BizIntel, a business-location intelligence platform for
-Kigali. It renders an opportunity map, location comparison, reports, an AI
-advisor, and an admin console on top of a transparent
-demand/accessibility/commercial-activity/competition/welfare index, not a
-business-success, survival, or revenue predictor. No page in this app claims
-otherwise.
+Kigali. The main flow is simple: pick a business type and one or more
+locations, and get a report that shows, for that category, the gap between the
+demand an area's fundamentals predict and the businesses actually observed
+there (underserved vs. saturated) — with an interactive map and a plain-language
+explanation. It is **not** a business-success, survival, or revenue predictor,
+and no page in this app claims otherwise.
 
-The backend API this app talks to lives in a separate repository:
-**[bizintel-backend](https://github.com/Alliance-D/bizintel-backend)**.
+## Links
+
+- **Live app**: https://bizintel-frontend.onrender.com
+- **Demo video**: https://youtu.be/iDnu1ndx2P0
+- **Backend API + data/ML pipeline**: [bizintel-backend](https://github.com/Alliance-D/bizintel-backend)
 
 ## Stack
 
@@ -16,8 +20,10 @@ The backend API this app talks to lives in a separate repository:
 - **Map**: MapLibre GL, OpenStreetMap raster tiles
 - **Styling**: Tailwind CSS
 - **Charts**: Recharts
-- **Auth**: JWT issued by the backend, stored client-side, mirrored to a
-  cookie so the edge middleware can protect `/admin/*`
+- **Auth**: only the admin console requires an account — a JWT issued by the
+  backend, mirrored to a cookie so the edge middleware can protect `/admin/*`.
+  The rest of the app needs no sign-in.
+- **Testing**: Vitest (unit) and Playwright (end-to-end, cross-browser, performance)
 
 ## Local setup
 
@@ -38,16 +44,16 @@ backend; there is no bundled demo or mock dataset.
 
 | Route | Purpose |
 |---|---|
-| `/map`, `/scout`, `/competitive` | Opportunity map, single-location assessment, and saturation view (one shared workspace component, different starting mode) |
-| `/compare` | Side by side comparison of saved or manually entered candidate locations |
+| `/start` → `/report/[id]` | **Primary flow.** Pick a business type and one or more locations (by area or exact coordinates) and get a unified report: the verdict, a capacity bar, the signals behind it, an interactive map with competitor/anchor icons, and a plain-language AI explanation. Comparison and the AI advice are folded into this report. |
+| `/map` (also `/scout`, `/competitive`) | Explore the whole city on the opportunity map; click a cell or drop a pin to assess a point (one shared workspace, different starting mode) |
 | `/insights` | Score distribution, factor breakdown, and district charts for a business category |
-| `/advisor` | Narrative location advice from the Gemini-backed advisor, grounded only in computed factors |
 | `/expansion-planner` | Ranks candidate zones for a second or third location, spaced away from ones already chosen |
-| `/reports` | Generates a branded report preview and PDF download for a location |
-| `/saved`, `/watchlist` | Saved candidate locations and monitoring signals |
-| `/field-validation` | Submits on-the-ground observations that calibrate the backend's opportunity index |
-| `/login`, `/profile` | Account sign in/registration and profile |
-| `/admin` | Dataset and model health, retraining and feature-rebuild triggers, model activation, audit log. Requires an admin or super admin account; protected server-side by `middleware.ts` |
+| `/field-validation` | Submits on-the-ground observations that calibrate the backend's predictions |
+| `/admin` (+ `/admin/data-quality`) | Dataset and model health, retraining and feature-rebuild triggers, model activation, audit log. Admin/super-admin only; protected server-side by `middleware.ts` |
+
+Some earlier standalone routes (`/compare`, `/reports`, `/advisor`, `/saved`,
+`/watchlist`, `/login`, `/profile`) still resolve by direct URL, but the main
+experience is the `/start` → `/report` flow above.
 
 ## Project layout
 
@@ -64,6 +70,15 @@ lib/                  API client (platform-api.ts), auth helpers, category defin
 middleware.ts         Edge middleware protecting /admin/*
 ```
 
+## Testing
+
+```bash
+npm test        # Vitest unit tests (report logic + map-icon resolvers), no server needed
+npm run e2e     # Playwright: form -> report flow, cross-browser smoke (Chromium/Firefox/
+                # WebKit) and API performance budgets. Needs the backend + database running
+                # (see DEPLOYMENT.md at the project root); it skips with a clear message if not.
+```
+
 ## Deployment
 
 The Dockerfile in this repo runs `next dev` and is meant for local/dev use
@@ -76,3 +91,4 @@ to the deployed backend's URL.
 ## Related
 
 - Backend API and data pipeline: [bizintel-backend](https://github.com/Alliance-D/bizintel-backend)
+- Full deployment + verification runbook: `DEPLOYMENT.md` at the project root
