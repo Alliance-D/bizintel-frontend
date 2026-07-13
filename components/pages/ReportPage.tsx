@@ -3,9 +3,9 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Loader2, Maximize2, Sparkles, Star, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Download, Link2, Loader2, Maximize2, Share2, Sparkles, Star, X } from "lucide-react";
 import {
-  getUnifiedReport, expandCandidate, getAdvice,
+  getUnifiedReport, expandCandidate, getAdvice, unifiedReportPdfUrl,
   type UnifiedReportBundle, type UnifiedReportPointEntry, type UnifiedReportAreaEntry, type AreaCandidate, type AdvisorResponse,
 } from "@/lib/platform-api";
 
@@ -253,7 +253,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
   );
 }
 
-function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { entry: UnifiedReportAreaEntry; reportId: number; entryIndex: number; reportLocale?: string | null }) {
+function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { entry: UnifiedReportAreaEntry; reportId: string; entryIndex: number; reportLocale?: string | null }) {
   const { t } = useLocale();
   const [expanded, setExpanded] = useState<UnifiedReportPointEntry | null>(entry.expanded_candidate || null);
   const [expandingId, setExpandingId] = useState<string | null>(null);
@@ -372,10 +372,45 @@ function CompareView({ comparison, entries, reportLocale }: { comparison: NonNul
   );
 }
 
+// Share the report by its permalink or download the branded PDF.
+function ShareMenu({ token, t }: { token: string; t: T }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="btn-secondary inline-flex items-center gap-1.5 !px-3.5 !py-2 text-[14px]">
+        <Share2 size={15} /> {t("report_share")}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="absolute right-0 top-full z-20 mt-2 w-60 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-1.5 shadow-[0_20px_50px_-20px_rgba(0,0,0,.35)]">
+            <button type="button" onClick={copyLink} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[14px] font-semibold hover:bg-[var(--surface-soft)]">
+              {copied ? <Check size={16} className="text-[var(--brand)]" /> : <Link2 size={16} className="text-[var(--brand-2)]" />}
+              {copied ? t("report_link_copied") : t("report_copy_link")}
+            </button>
+            <a href={unifiedReportPdfUrl(token)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-[14px] font-semibold hover:bg-[var(--surface-soft)]">
+              <Download size={16} className="text-[var(--brand-2)]" /> {t("report_download_pdf")}
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ReportPage({ reportId }: { reportId: string }) {
   const { t } = useLocale();
-  const numericId = Number(reportId);
-  const { data, loading } = useAsyncData(() => getUnifiedReport(numericId), [numericId], null as { report_id: number; report: UnifiedReportBundle } | null);
+  const { data, loading } = useAsyncData(() => getUnifiedReport(reportId), [reportId], null as { report_token: string; report: UnifiedReportBundle } | null);
 
   if (loading) return <main className="app-container py-20 text-center"><Loader2 className="mx-auto animate-spin text-[var(--brand)]" size={28} /><p className="mt-4 font-semibold text-[var(--ink-soft)]">{t("report_loading")}</p></main>;
   if (!data?.report) return (
@@ -388,9 +423,12 @@ export function ReportPage({ reportId }: { reportId: string }) {
   const report = data.report;
   return (
     <main className="app-container py-8 lg:py-12">
-      <div className="mb-7">
-        <div className="kicker">{catLabel(report.business_category, t)}</div>
-        <h1 className="mt-3 text-[clamp(26px,3.4vw,40px)] font-black tracking-[-0.02em]">{t("report_page_title")}</h1>
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <div>
+          <div className="kicker">{catLabel(report.business_category, t)}</div>
+          <h1 className="mt-3 text-[clamp(26px,3.4vw,40px)] font-black tracking-[-0.02em]">{t("report_page_title")}</h1>
+        </div>
+        <ShareMenu token={data.report_token} t={t} />
       </div>
       <div className="flex flex-col gap-7">
         {report.comparison
@@ -398,7 +436,7 @@ export function ReportPage({ reportId }: { reportId: string }) {
           : report.entries.map((entry, i) =>
               entry.mode === "point"
                 ? <SingleLocationReport key={i} entry={entry} reportLocale={report.locale} />
-                : <AreaCandidatesPanel key={i} entry={entry} reportId={data.report_id} entryIndex={i} reportLocale={report.locale} />
+                : <AreaCandidatesPanel key={i} entry={entry} reportId={data.report_token} entryIndex={i} reportLocale={report.locale} />
             )}
         <div className="text-center"><Link href="/start" className="btn-secondary inline-flex">{t("report_start_new_search")}</Link></div>
       </div>

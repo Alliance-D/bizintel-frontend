@@ -85,7 +85,7 @@ export function StartPage() {
           ? { mode: "point", latitude: Number(loc.latitude), longitude: Number(loc.longitude), label: loc.label || undefined }
           : { mode: "area", district: loc.district, sector: loc.sector || undefined, cell: loc.cell || undefined, label: loc.label || undefined });
       const res = await buildUnifiedReport({ business_category: category, locations: payload, locale });
-      if (res.report_id != null) router.push(`/report/${res.report_id}`);
+      if (res.report_token != null) router.push(`/report/${res.report_token}`);
       else setError(t("start_error"));
     } catch { setError(t("start_error")); }
     finally { setSubmitting(false); }

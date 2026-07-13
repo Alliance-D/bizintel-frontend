@@ -253,7 +253,7 @@ export async function getNearbyCompetitors(latitude: number, longitude: number, 
 }
 
 // ---------------------------------------------------------------------------
-// Unified report (the /start form -> /report/[id] flow)
+// Unified report (the /start form -> /report/[token] flow)
 // ---------------------------------------------------------------------------
 
 export async function buildUnifiedReport(payload: {
@@ -263,21 +263,26 @@ export async function buildUnifiedReport(payload: {
   notes?: string;
   locale?: string;
 }) {
-  return requestJson<{ report_id: number | null; report: UnifiedReportBundle }>(`/api/v1/reports/build`, {
+  return requestJson<{ report_token: string | null; report: UnifiedReportBundle }>(`/api/v1/reports/build`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function getUnifiedReport(reportId: string | number) {
-  return requestJson<{ report_id: number; report: UnifiedReportBundle }>(`/api/v1/reports/${encodeURIComponent(String(reportId))}`);
+export async function getUnifiedReport(reportToken: string) {
+  return requestJson<{ report_token: string; report: UnifiedReportBundle }>(`/api/v1/reports/${encodeURIComponent(reportToken)}`);
 }
 
-export async function expandCandidate(reportId: string | number, payload: { entry_index: number; grid_id: string; latitude: number; longitude: number; label?: string }) {
-  return requestJson<UnifiedReportPointEntry>(`/api/v1/reports/${encodeURIComponent(String(reportId))}/expand`, {
+export async function expandCandidate(reportToken: string, payload: { entry_index: number; grid_id: string; latitude: number; longitude: number; label?: string }) {
+  return requestJson<UnifiedReportPointEntry>(`/api/v1/reports/${encodeURIComponent(reportToken)}/expand`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+// Direct URL to the branded PDF for a saved report (used by the download link).
+export function unifiedReportPdfUrl(reportToken: string) {
+  return `${API_BASE_URL}/api/v1/reports/${encodeURIComponent(reportToken)}/pdf`;
 }
 
 export async function getPlatformOpportunityGeoJson(category = "pharmacy", layer = "opportunity", limit = 5000, locale?: string) {
