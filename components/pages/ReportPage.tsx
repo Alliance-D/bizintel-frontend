@@ -14,7 +14,7 @@ import {
 // cache it, so a toggle back and forth doesn't keep hitting the model.
 const narrativeCache = new Map<string, AdvisorResponse>();
 import { useAsyncData, safeNumber } from "@/components/platform/pageHelpers";
-import { PoiGlyph, POI_GLYPHS, COMPETITOR_COLOR, ANCHOR_COLORS, competitorGlyphKey } from "@/components/platform/poiGlyphs";
+import { PoiGlyph, POI_GLYPHS, COMPETITOR_COLOR, COMPLEMENTARY_COLOR, ANCHOR_COLORS, competitorGlyphKey } from "@/components/platform/poiGlyphs";
 import { situationFromCounts, fmt, catLabel, catPluralEn, activityLabel, nearLabel, type T } from "@/lib/report-format";
 import { useLocale } from "@/lib/locale";
 import type { TranslationKey } from "@/lib/translations";
@@ -88,6 +88,7 @@ function MapLegend({ cats, catKey, t }: { cats: string; catKey: string; t: T }) 
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.market} glyph={POI_GLYPHS.market} size={17} /> {t("report_legend_markets")}</span>
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.school} glyph={POI_GLYPHS.school} size={17} /> {t("report_legend_schools")}</span>
       <span className="flex items-center gap-1.5"><PoiGlyph color={ANCHOR_COLORS.health} glyph={POI_GLYPHS.health} size={17} /> {t("report_legend_clinics")}</span>
+      <span className="flex items-center gap-1.5"><PoiGlyph color={COMPLEMENTARY_COLOR} glyph={POI_GLYPHS.store} size={17} /> {t("report_legend_complementary")}</span>
     </>
   );
 }
@@ -106,7 +107,7 @@ function MapModal({ entry, cats, t, onClose }: { entry: UnifiedReportPointEntry;
           <span className="font-[var(--display-font)] text-[16px] font-semibold">{t("report_map_heading")}</span>
           <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]" aria-label="Close"><X size={16} /></button>
         </div>
-        <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={560} interactive category={entry.assessment.business_category} />
+        <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} complementary={entry.complementary} villageBoundary={entry.village_boundary} height={560} interactive category={entry.assessment.business_category} />
         <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-5 py-4 text-[12.5px] text-[var(--ink-soft)] sm:grid-cols-3"><MapLegend cats={cats} catKey={entry.assessment.business_category} t={t} /></div>
       </div>
     </div>
@@ -226,7 +227,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
                 <button type="button" onClick={() => setMapOpen(true)} className="flex items-center gap-1 text-[12px] font-semibold text-[var(--brand-2)]"><Maximize2 size={12} /> {t("report_map_enlarge")}</button>
               </div>
               <button type="button" onClick={() => setMapOpen(true)} className="mt-3 block w-full cursor-pointer text-left" aria-label={t("report_map_enlarge")}>
-                <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} villageBoundary={entry.village_boundary} height={280} category={a.business_category} />
+                <ReportMap latitude={entry.latitude} longitude={entry.longitude} competitors={entry.competitors} anchors={entry.anchors} complementary={entry.complementary} villageBoundary={entry.village_boundary} height={280} category={a.business_category} />
               </button>
               <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-3.5 text-[12px] text-[var(--ink-soft)]"><MapLegend cats={cats} catKey={a.business_category} t={t} /></div>
             </div>

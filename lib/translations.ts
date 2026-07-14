@@ -570,6 +570,7 @@ export const en = {
   report_legend_markets: "Markets",
   report_legend_schools: "Schools",
   report_legend_clinics: "Clinics",
+  report_legend_complementary: "Nearby businesses",
   report_legend_roads: "Roads",
   // nearby
   report_nearby_competitors: "{cats} already open",
@@ -1128,6 +1129,7 @@ export const rw: Partial<Record<TranslationKey, string>> = {
   report_legend_markets: "Amasoko",
   report_legend_schools: "Amashuri",
   report_legend_clinics: "Amavuriro",
+  report_legend_complementary: "Ubucuruzi bwo hafi",
   report_legend_roads: "Imihanda",
   report_nearby_competitors: "{cat} zisanzwe zifunguye",
   report_nearby_anchors: "Bikurura abantu hafi yawe",

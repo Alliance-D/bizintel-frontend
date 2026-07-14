@@ -19,6 +19,9 @@ export const POI_GLYPHS: Record<string, string> = {
 };
 
 export const COMPETITOR_COLOR = "#B9543A";
+// Complementary businesses (other categories nearby) - a distinct hue from the
+// clay competitors and the gold/teal demand anchors.
+export const COMPLEMENTARY_COLOR = "#5B63A8";
 export const ANCHOR_COLORS: Record<string, string> = {
   transport: "#0E7A62", market: "#B08033", school: "#7A6A33", health: "#0E7A62", anchor: "#B08033",
 };

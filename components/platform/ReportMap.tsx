@@ -3,13 +3,14 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { NearbyPoi, VillageBoundary } from "@/lib/platform-api";
-import { POI_GLYPHS, COMPETITOR_COLOR, ANCHOR_COLORS, anchorIconKey, competitorGlyphKey, discSvgMarkup } from "./poiGlyphs";
+import { POI_GLYPHS, COMPETITOR_COLOR, COMPLEMENTARY_COLOR, ANCHOR_COLORS, anchorIconKey, competitorGlyphKey, discSvgMarkup } from "./poiGlyphs";
 
 type ReportMapProps = {
   latitude: number;
   longitude: number;
   competitors?: NearbyPoi[];
   anchors?: NearbyPoi[];
+  complementary?: NearbyPoi[];
   villageBoundary?: VillageBoundary;
   height?: number;
   interactive?: boolean;
@@ -51,7 +52,7 @@ function fc(points: NearbyPoi[]) {
   } as any;
 }
 
-export function ReportMap({ latitude, longitude, competitors = [], anchors = [], villageBoundary = null, height = 320, interactive = false, category = "" }: ReportMapProps) {
+export function ReportMap({ latitude, longitude, competitors = [], anchors = [], complementary = [], villageBoundary = null, height = 320, interactive = false, category = "" }: ReportMapProps) {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
@@ -90,16 +91,27 @@ export function ReportMap({ latitude, longitude, competitors = [], anchors = [],
         const key = anchorIconKey(a.category_key);
         (groups[key] ||= []).push(a);
       }
+      // group complementary businesses by their own category glyph
+      const compl: Record<string, NearbyPoi[]> = {};
+      for (const c of complementary) {
+        const key = competitorGlyphKey(c.category_key);
+        (compl[key] ||= []).push(c);
+      }
 
       await Promise.all([
         loadIcon(map, "competitor", COMPETITOR_COLOR, compGlyph),
         ...Object.keys(groups).map((k) => loadIcon(map, k, ANCHOR_COLORS[k], POI_GLYPHS[k])),
+        ...Object.keys(compl).map((k) => loadIcon(map, `compl-${k}`, COMPLEMENTARY_COLOR, POI_GLYPHS[k])),
       ]);
       if (!mounted) return;
 
       for (const [key, items] of Object.entries(groups)) {
         map.addSource(`anchors-${key}`, { type: "geojson", data: fc(items) });
         map.addLayer({ id: `anchors-${key}`, type: "symbol", source: `anchors-${key}`, layout: { "icon-image": key, "icon-size": 1.0, "icon-allow-overlap": true } });
+      }
+      for (const [key, items] of Object.entries(compl)) {
+        map.addSource(`compl-${key}`, { type: "geojson", data: fc(items) });
+        map.addLayer({ id: `compl-${key}`, type: "symbol", source: `compl-${key}`, layout: { "icon-image": `compl-${key}`, "icon-size": 0.92, "icon-allow-overlap": true } });
       }
       if (competitors.length) {
         map.addSource("competitors", { type: "geojson", data: fc(competitors) });
@@ -113,6 +125,7 @@ export function ReportMap({ latitude, longitude, competitors = [], anchors = [],
         ...geometryPoints(villageBoundary?.geometry),
         ...competitors.slice(0, 8).map((c) => [c.longitude, c.latitude] as [number, number]),
         ...anchors.slice(0, 8).map((a) => [a.longitude, a.latitude] as [number, number]),
+        ...complementary.slice(0, 6).map((c) => [c.longitude, c.latitude] as [number, number]),
       ];
       if (pts.length > 1) map.fitBounds(boundsFromPoints(pts), { padding: 30, duration: 0, maxZoom: 16.2 });
       window.setTimeout(() => map.resize(), 80);
