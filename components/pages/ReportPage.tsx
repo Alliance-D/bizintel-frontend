@@ -196,6 +196,9 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
               <Signal label={t("report_signal_competitors").replace("{cats}", cats).replace("{cat}", cat)} value={fmt(observed, 0)} unit={a.competition ? undefined : undefined} />
               <Signal label={t("report_signal_anchors")} value={fmt(sig?.anchor_count_1000m, 0)} unit={t("report_within_1km")} />
               <Signal label={t("report_signal_estimate")} value={`≈ ${fmt(expected, 1)}`} unit={cat} />
+              {overall.viability != null && (
+                <Signal label={t("report_signal_viability")} value={`${Math.round(Number(overall.viability) * 100)}%`} unit={t("report_viability_unit")} />
+              )}
             </div>
 
             <div className="mt-8">

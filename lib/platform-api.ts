@@ -87,6 +87,7 @@ export type PlatformAssessment = {
     expected_count?: number | null;
     observed_count?: number | null;
     gap?: number | null;
+    viability?: number | null;
   };
   factors: {
     demand_score: number;
