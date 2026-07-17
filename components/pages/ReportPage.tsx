@@ -377,6 +377,7 @@ function CompareView({ comparison, entries, reportLocale }: { comparison: NonNul
 function ShareMenu({ token, t }: { token: string; t: T }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   async function copyLink() {
     try {
@@ -384,6 +385,31 @@ function ShareMenu({ token, t }: { token: string; t: T }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {}
+  }
+
+  // Fetch the PDF as a blob and save it via a same-origin object URL. A plain
+  // <a target="_blank"> to the cross-origin PDF endpoint is silently swallowed
+  // by popup blockers / new-tab handling, so it downloads directly instead.
+  async function downloadPdf() {
+    setDownloading(true);
+    try {
+      const res = await fetch(unifiedReportPdfUrl(token));
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bizintel-report-${token}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setOpen(false);
+    } catch {
+      window.open(unifiedReportPdfUrl(token), "_blank", "noopener,noreferrer");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -399,9 +425,9 @@ function ShareMenu({ token, t }: { token: string; t: T }) {
               {copied ? <Check size={16} className="text-[var(--brand)]" /> : <Link2 size={16} className="text-[var(--brand-2)]" />}
               {copied ? t("report_link_copied") : t("report_copy_link")}
             </button>
-            <a href={unifiedReportPdfUrl(token)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-[14px] font-semibold hover:bg-[var(--surface-soft)]">
-              <Download size={16} className="text-[var(--brand-2)]" /> {t("report_download_pdf")}
-            </a>
+            <button type="button" onClick={downloadPdf} disabled={downloading} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[14px] font-semibold hover:bg-[var(--surface-soft)] disabled:opacity-60">
+              {downloading ? <Loader2 size={16} className="animate-spin text-[var(--brand-2)]" /> : <Download size={16} className="text-[var(--brand-2)]" />} {t("report_download_pdf")}
+            </button>
           </div>
         </>
       )}
