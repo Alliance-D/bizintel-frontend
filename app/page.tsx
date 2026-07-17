@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { ArrowRight, BarChart3, Bell, CheckCircle2, FileText, Map, MapPin, Radar } from "lucide-react";
+import { ArrowRight, BarChart3, CheckCircle2, FileText, Map, MapPin, ShieldCheck } from "lucide-react";
 import { useLocale } from "@/lib/locale";
 
 function ProductIllustration({ t }: { t: ReturnType<typeof useLocale>["t"] }) {
@@ -23,9 +23,9 @@ function ProductIllustration({ t }: { t: ReturnType<typeof useLocale>["t"] }) {
       <div className="hero-agent-card">
         <div className="kicker">{t("home_hero_location_screen")}</div>
         <h3>{t("home_hero_live_cell")}</h3>
-        <div className="hero-score-row"><span>{t("home_hero_demand")}</span><strong>89</strong></div>
-        <div className="hero-score-row"><span>{t("home_hero_access")}</span><strong>82</strong></div>
-        <div className="hero-score-row warn"><span>{t("home_hero_competition")}</span><strong>63</strong></div>
+        <div className="hero-score-row"><span>{t("home_hero_expected")}</span><strong>6.3</strong></div>
+        <div className="hero-score-row"><span>{t("home_hero_observed")}</span><strong>2</strong></div>
+        <div className="hero-score-row"><span>{t("home_hero_gap")}</span><strong>+4.3</strong></div>
         <p>{t("home_hero_summary")}</p>
       </div>
     </div>
@@ -38,7 +38,7 @@ export default function HomePage() {
   const modes = [
     { title: t("home_mode_opportunity_title"), text: t("home_mode_opportunity_text"), icon: Map, href: "/map" },
     { title: t("home_mode_scout_title"), text: t("home_mode_scout_text"), icon: MapPin, href: "/start" },
-    { title: t("home_mode_competitive_title"), text: t("home_mode_competitive_text"), icon: Radar, href: "/insights" },
+    { title: t("home_mode_competitive_title"), text: t("home_mode_competitive_text"), icon: BarChart3, href: "/insights" },
   ];
 
   const dataLayers = [
@@ -50,7 +50,7 @@ export default function HomePage() {
     [t("home_step1_title"), t("home_step1_text"), MapPin],
     [t("home_step2_title"), t("home_step2_text"), BarChart3],
     [t("home_step3_title"), t("home_step3_text"), FileText],
-    [t("home_step4_title"), t("home_step4_text"), Bell],
+    [t("home_step4_title"), t("home_step4_text"), ShieldCheck],
   ];
 
   return (
