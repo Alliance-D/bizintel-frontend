@@ -321,24 +321,6 @@ export async function generateReport(payload: { title: string; business_category
   });
 }
 
-export async function getSavedLocations() {
-  return requestJson<{ locations: any[] }>(`/api/v1/saved-locations`);
-}
-
-export async function getAlerts() {
-  return requestJson<{ alerts: any[] }>(`/api/v1/alerts`);
-}
-
-export async function deleteSavedLocation(locationId: string | number) {
-  return requestJson<any>(`/api/v1/saved-locations/${encodeURIComponent(String(locationId))}`, {
-    method: "DELETE",
-  });
-}
-
-export async function getNotifications() {
-  return requestJson<{ notifications: any[] }>(`/api/v1/notifications`);
-}
-
 export async function submitValidationPoint(payload: any) {
   return requestJson<any>(`/api/v1/field-validation/points`, {
     method: "POST",
@@ -439,39 +421,6 @@ export async function getAdvice(payload: { business_category: string; latitude: 
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-// ---------------------------------------------------------------------------
-// Expansion Planner
-// ---------------------------------------------------------------------------
-
-export type ExpansionCandidate = {
-  grid_id: string;
-  latitude: number;
-  longitude: number;
-  opportunity_score: number;
-  demand_score: number;
-  accessibility_score: number;
-  commercial_activity_score: number;
-  competition_pressure: number;
-  confidence_score: number;
-  opportunity_type: string;
-  risk_level: string;
-  district: string;
-  sector: string;
-  distance_from_nearest_existing_m: number | null;
-};
-
-export async function planExpansion(payload: {
-  business_category: string;
-  existing_locations: Array<{ latitude: number; longitude: number }>;
-  limit?: number;
-  min_distance_from_existing_m?: number;
-}) {
-  return requestJson<{ candidates: ExpansionCandidate[]; excluded_near_existing: number; existing_location_count: number }>(
-    `/api/v1/platform/expansion-planner`,
-    { method: "POST", body: JSON.stringify(payload) },
-  );
 }
 
 // ---------------------------------------------------------------------------
