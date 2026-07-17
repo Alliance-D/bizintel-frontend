@@ -337,13 +337,6 @@ export async function getModelStatus() {
 }
 
 
-export async function saveLocation(payload: { label: string; business_category: string; latitude: number; longitude: number; notes?: string }) {
-  return requestJson<any>(`/api/v1/saved-locations`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function downloadReportPdf(payload: { title: string; business_category: string; latitude: number; longitude: number; saved_location_id?: number }) {
   const response = await fetch(`${API_BASE_URL}/api/v1/reports/pdf`, {
     method: "POST",

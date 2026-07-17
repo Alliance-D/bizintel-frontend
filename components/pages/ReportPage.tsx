@@ -15,7 +15,7 @@ import {
 const narrativeCache = new Map<string, AdvisorResponse>();
 import { useAsyncData, safeNumber } from "@/components/platform/pageHelpers";
 import { PoiGlyph, POI_GLYPHS, COMPETITOR_COLOR, COMPLEMENTARY_COLOR, ANCHOR_COLORS, competitorGlyphKey } from "@/components/platform/poiGlyphs";
-import { situationFromCounts, fmt, catLabel, catPluralEn, activityLabel, nearLabel, type T } from "@/lib/report-format";
+import { situationFromCounts, fmt, catLabel, catPluralEn, nearLabel, type T } from "@/lib/report-format";
 import { useLocale } from "@/lib/locale";
 import type { TranslationKey } from "@/lib/translations";
 
@@ -192,7 +192,6 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
             <div className="sec-label">{t("report_signals_heading")}</div>
             <div className="mt-3">
               <Signal label={t("report_signal_people")} value={fmt(sig?.people_within_1km, 0)} unit={t("report_within_1km")} />
-              <Signal label={t("report_signal_activity")} value={activityLabel(sig?.commercial_activity_level, t)} />
               <Signal label={t("report_signal_competitors").replace("{cats}", cats).replace("{cat}", cat)} value={fmt(observed, 0)} unit={a.competition ? undefined : undefined} />
               <Signal label={t("report_signal_anchors")} value={fmt(sig?.anchor_count_1000m, 0)} unit={t("report_within_1km")} />
               <Signal label={t("report_signal_estimate")} value={`≈ ${fmt(expected, 1)}`} unit={cat} />
@@ -243,7 +242,6 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
             <div className="panel p-4">
               <div className="sec-label mb-3">{t("report_reliability_heading")}</div>
               <div className="flex flex-col gap-2.5 text-[13.5px]">
-                <div className="flex justify-between"><span className="text-[var(--ink-soft)]">{t("report_confidence_label")}</span><b>{fmt(overall.confidence_score, 0)}%</b></div>
                 <div className="flex justify-between"><span className="text-[var(--ink-soft)]">{t("report_based_on")}</span><b>{t("report_based_on_value").replace("{cats}", cats).replace("{cat}", cat)}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-[var(--ink-soft)]">{t("report_caveat")}</span><b className="text-right">{t("report_caveat_value")}</b></div>
               </div>
@@ -359,7 +357,6 @@ function CompareView({ comparison, entries, reportLocale }: { comparison: NonNul
                   <CompareStat label={t("cap_room")} value={room >= 0 ? `+${fmt(Math.max(0, room), 0)}` : fmt(room, 0)} strong />
                   <CompareStat label={t("cap_open_now")} value={fmt(rObs, 0)} />
                   <CompareStat label={t("report_signal_people")} value={fmt(row.people_within_1km, 0)} />
-                  <CompareStat label={t("report_confidence_label")} value={`${fmt(row.confidence_score, 0)}%`} />
                 </div>
                 {idx >= 0 && (
                   <button type="button" onClick={() => setOpenIdx(openIdx === idx ? null : idx)} className="btn-secondary mt-5 w-full !py-2.5 text-[13.5px]">

@@ -30,11 +30,9 @@ function LocaleToggle() {
   );
 }
 
-const mapRoutes = new Set(["/map", "/scout", "/competitive"]);
-const appRoutesWithoutFooter = mapRoutes;
+const appRoutesWithoutFooter = new Set(["/map"]);
 
 function isActive(pathname: string, href: string) {
-  if (href === "/map") return mapRoutes.has(pathname);
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

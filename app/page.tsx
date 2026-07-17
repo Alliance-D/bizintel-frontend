@@ -37,8 +37,8 @@ export default function HomePage() {
 
   const modes = [
     { title: t("home_mode_opportunity_title"), text: t("home_mode_opportunity_text"), icon: Map, href: "/map" },
-    { title: t("home_mode_scout_title"), text: t("home_mode_scout_text"), icon: MapPin, href: "/scout" },
-    { title: t("home_mode_competitive_title"), text: t("home_mode_competitive_text"), icon: Radar, href: "/competitive" },
+    { title: t("home_mode_scout_title"), text: t("home_mode_scout_text"), icon: MapPin, href: "/start" },
+    { title: t("home_mode_competitive_title"), text: t("home_mode_competitive_text"), icon: Radar, href: "/insights" },
   ];
 
   const dataLayers = [

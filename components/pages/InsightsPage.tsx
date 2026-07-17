@@ -18,12 +18,6 @@ const SCORE_BUCKETS = [
 
 const BUCKET_COLORS = ["#fecaca", "#fde68a", "#a7f3d0", "#5eead4", "#0f766e"];
 
-function factorAverage(features: AnyObj[], key: string) {
-  if (!features.length) return 0;
-  const total = features.reduce((sum, feature) => sum + safeNumber(feature.properties?.[key]), 0);
-  return Math.round(total / features.length);
-}
-
 function ChartCard({ title, help, children }: { title: string; help: string; children: React.ReactNode }) {
   return (
     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -63,15 +57,6 @@ export function InsightsPage() {
     count: scores.filter((score) => score >= bucket.min && score < bucket.max).length,
   })), [scores]);
 
-  const factorBreakdown = useMemo(() => [
-    { label: t("demand_label"), value: factorAverage(features, "demand_score") },
-    { label: t("access_label"), value: factorAverage(features, "accessibility_score") },
-    { label: t("activity_label"), value: factorAverage(features, "commercial_activity_score") },
-    { label: t("competition_label"), value: factorAverage(features, "competition_pressure") },
-    { label: t("confidence_label"), value: factorAverage(features, "confidence_score") },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [features, t]);
-
   const districtBreakdown = useMemo(() => {
     const byDistrict = new Map<string, { total: number; count: number }>();
     features.forEach((feature) => {
@@ -101,7 +86,7 @@ export function InsightsPage() {
         <div className="mt-6"><EmptyDataPanel title={t("loading_insights")} text={t("loading_insights_text")} /></div>
       ) : features.length ? (
         <>
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div className="mt-6">
             <ChartCard title={t("score_distribution")} help={t("score_distribution_help")}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distribution} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
@@ -112,18 +97,6 @@ export function InsightsPage() {
                   <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                     {distribution.map((entry, index) => <Cell key={entry.label} fill={BUCKET_COLORS[index]} />)}
                   </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title={t("what_drives_score")} help={t("what_drives_score_help").replace("{category}", categoryLabel(category).toLowerCase())}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={factorBreakdown} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee5d8" horizontal={false} />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="label" width={84} tick={{ fontSize: 12, fontWeight: 800, fill: "#0f172a" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value: any) => [value, t("average_score_label")]} />
-                  <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="#0f766e" />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
