@@ -26,12 +26,6 @@ export type OpportunityCell = {
   opportunity_score: number;
   opportunity_type?: string;
   experience_badge?: string;
-  demand_score: number;
-  accessibility_score?: number;
-  access_score?: number;
-  commercial_activity_score: number;
-  competition_pressure: number;
-  confidence_score: number;
   opportunity_rank?: number;
   risk_level?: "low" | "medium" | "high" | string;
   explanation?: {
@@ -49,10 +43,6 @@ export type OpportunityCellsResponse = {
   summary: {
     total_cells: number;
     average_opportunity: number;
-    average_demand: number;
-    average_access: number;
-    average_competition: number;
-    average_confidence?: number;
     zone_counts?: Record<string, number>;
     best_zone?: OpportunityCell;
   };
@@ -82,18 +72,11 @@ export type PlatformAssessment = {
     opportunity_score: number;
     gap_score?: number;
     opportunity_type?: string;
-    confidence_score: number;
     opportunity_rank?: number | null;
     expected_count?: number | null;
     observed_count?: number | null;
     gap?: number | null;
     viability?: number | null;
-  };
-  factors: {
-    demand_score: number;
-    accessibility_score: number;
-    commercial_activity_score: number;
-    competition_pressure: number;
   };
   signals?: LocationSignals;
   competition?: {
@@ -110,7 +93,6 @@ export type LocationSignals = {
   people_within_1km: number | null;
   population_density_1000m: number | null;
   sector_population: number | null;
-  commercial_activity_level: string;
   commercial_poi_count_500m: number | null;
   complementary_poi_count_500m: number | null;
   anchor_count_1000m: number | null;
