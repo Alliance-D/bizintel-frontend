@@ -3,6 +3,7 @@
 export const en = {
   // Nav / shell
   nav_map: "Explore the map",
+  nav_home: "Home",
   nav_compare: "Compare",
   nav_insights: "Insights",
   nav_advisor: "AI Advisor",
@@ -595,6 +596,7 @@ export type TranslationKey = keyof typeof en;
 
 export const rw: Partial<Record<TranslationKey, string>> = {
   nav_map: "Reba ikarita",
+  nav_home: "Ahabanza",
   nav_compare: "Gereranya",
   nav_insights: "Isesengura",
   nav_advisor: "Umujyanama wa AI",

@@ -3,17 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Languages, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Home, Languages, LogOut, Map, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { AUTH_CHANGED_EVENT, AuthUser, clearSession, getUser, hasAdminAccess } from "@/lib/auth";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { useLocale } from "@/lib/locale";
 
 function usePrimaryNav() {
   const { t } = useLocale();
-  // Saved/Watchlist is hidden from the primary nav - the core flow is
-  // form -> report, and reports are addressable by URL. The /saved route
-  // still exists for anyone with a direct link.
   return useMemo(() => [
+    { href: "/", label: t("nav_home"), icon: Home },
     { href: "/start", label: t("nav_start"), icon: Sparkles },
     { href: "/map", label: t("nav_map"), icon: Map },
   ], [t]);
