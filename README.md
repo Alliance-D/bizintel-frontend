@@ -45,15 +45,14 @@ backend; there is no bundled demo or mock dataset.
 | Route | Purpose |
 |---|---|
 | `/start` → `/report/[id]` | **Primary flow.** Pick a business type and one or more locations (by area or exact coordinates) and get a unified report: the verdict, a capacity bar, the signals behind it, an interactive map with competitor/anchor icons, and a plain-language AI explanation. Comparison and the AI advice are folded into this report. |
-| `/map` (also `/scout`, `/competitive`) | Explore the whole city on the opportunity map; click a cell or drop a pin to assess a point (one shared workspace, different starting mode) |
+| `/map` | Explore the whole city on the opportunity map; click a cell or drop a pin to assess a point. Scout and Competitive are starting *modes* within this one workspace, not separate routes |
 | `/insights` | Score distribution, factor breakdown, and district charts for a business category |
-| `/expansion-planner` | Ranks candidate zones for a second or third location, spaced away from ones already chosen |
 | `/field-validation` | Submits on-the-ground observations that calibrate the backend's predictions |
-| `/admin` (+ `/admin/data-quality`) | Dataset and model health, retraining and feature-rebuild triggers, model activation, audit log. Admin/super-admin only; protected server-side by `middleware.ts` |
+| `/legal` | Privacy Policy and End User Licence Agreement (Terms of Use), in English and Kinyarwanda; linked from the footer and the start form |
+| `/admin` (+ `/admin/data-quality`, `/admin/models`, `/admin/status`) | Dataset and model health, retraining and feature-rebuild triggers, model activation, audit log. Admin/super-admin only; protected server-side by `middleware.ts` |
 
-Some earlier standalone routes (`/compare`, `/reports`, `/advisor`, `/saved`,
-`/watchlist`, `/login`, `/profile`) still resolve by direct URL, but the main
-experience is the `/start` → `/report` flow above.
+A couple of secondary routes (`/login`, `/profile`) still resolve by direct URL,
+but the main experience is the `/start` → `/report` flow above.
 
 ## Project layout
 
