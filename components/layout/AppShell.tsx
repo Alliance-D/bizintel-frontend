@@ -149,13 +149,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {showFooter && (
         <footer className="border-t border-[var(--line)] bg-slate-50">
-          <div className="app-container grid gap-8 py-10 md:grid-cols-[1fr_auto_auto]">
+          <div className="app-container grid gap-8 py-10 md:grid-cols-[1fr_auto_auto_auto]">
             <div>
               <BrandMark />
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">{t("footer_tagline")}</p>
             </div>
             <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_product")}</strong><Link href="/start">{t("nav_start")}</Link><Link href="/map">{t("nav_map")}</Link><Link href="/insights">{t("nav_insights")}</Link></div>
             <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_workspace")}</strong><Link href="/field-validation">{t("footer_field_checks")}</Link></div>
+            <div className="grid gap-2 text-sm text-slate-600"><strong className="text-slate-950">{t("footer_legal")}</strong><Link href="/legal">{t("legal_link_label")}</Link></div>
           </div>
         </footer>
       )}

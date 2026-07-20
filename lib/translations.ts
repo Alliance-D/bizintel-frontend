@@ -18,6 +18,9 @@ export const en = {
   footer_workspace: "Workspace",
   footer_expansion_planner: "Expansion Planner",
   footer_field_checks: "Field checks",
+  footer_legal: "Legal",
+  legal_link_label: "Privacy Policy & Terms",
+  start_consent_pre: "By continuing, you agree to our",
   language: "Language",
 
   // Homepage
@@ -611,6 +614,9 @@ export const rw: Partial<Record<TranslationKey, string>> = {
   footer_workspace: "Ahakorerwa",
   footer_expansion_planner: "Gutegura Kwaguka",
   footer_field_checks: "Isuzuma ku rubuga",
+  footer_legal: "Amategeko",
+  legal_link_label: "Politiki y'Ibanga n'Amabwiriza",
+  start_consent_pre: "Ukomeje gukoresha, wemera",
   language: "Ururimi",
 
   home_badge: "Ubumenyi bw'amahirwe ya Kigali",

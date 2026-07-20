@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, ChevronDown, Loader2, MapPin, Plus, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
 import { buildUnifiedReport, getCells, getDistricts, getSectors, type UnifiedReportFormLocation } from "@/lib/platform-api";
@@ -159,6 +160,10 @@ export function StartPage() {
           <button type="button" onClick={submit} disabled={submitting} className="btn-primary mt-6">
             {submitting ? <><Loader2 size={17} className="animate-spin" /> {t("start_submitting")}</> : <>{t("start_submit")} <ArrowRight size={17} /></>}
           </button>
+          <p className="mt-3 text-[12px] text-[var(--muted)]" style={{ maxWidth: "52ch" }}>
+            {t("start_consent_pre")}{" "}
+            <Link href="/legal" className="font-semibold text-[var(--brand-2)] underline underline-offset-2">{t("legal_link_label")}</Link>.
+          </p>
           {error && <p className="mt-3 rounded-2xl bg-[var(--clay-wash)] p-3 text-[13.5px] font-semibold text-[var(--clay)]">{error}</p>}
 
           <div className="mt-9 flex items-start gap-2.5 border-t border-[var(--line-2)] pt-5 text-[12.5px] text-[var(--muted)]" style={{ maxWidth: "52ch" }}>
