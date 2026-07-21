@@ -259,6 +259,9 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
   const { t } = useLocale();
   const [expanded, setExpanded] = useState<UnifiedReportPointEntry | null>(entry.expanded_candidate || null);
   const [expandingId, setExpandingId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const moreCount = entry.more_candidates?.length ?? 0;
+  const shown = showAll ? [...entry.top_candidates, ...(entry.more_candidates ?? [])] : entry.top_candidates;
 
   async function handleExpand(c: AreaCandidate) {
     setExpandingId(c.grid_id || "");
@@ -286,7 +289,7 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
       <h2 className="font-[var(--display-font)] text-[clamp(20px,2.4vw,26px)] font-semibold tracking-[-0.01em]">{t("report_ranked_heading").replace("{area}", entry.label)}</h2>
       <p className="mt-2 max-w-[60ch] text-[14.5px] text-[var(--ink-soft)]">{t("report_ranked_sub").replace("{cat}", cat)}</p>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {entry.top_candidates.map((c, i) => {
+        {shown.map((c, i) => {
           const gd = (c as any).explanation?.gap_details || {};
           const cExp = safeNumber(gd.expected_count);
           const cObs = safeNumber(gd.observed_count);
@@ -309,6 +312,11 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
           );
         })}
       </div>
+      {moreCount > 0 && (
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="btn-secondary mt-5">
+          {showAll ? t("report_show_fewer") : t("report_show_all").replace("{n}", String(entry.total_candidates ?? entry.top_candidates.length))}
+        </button>
+      )}
     </div>
   );
 }

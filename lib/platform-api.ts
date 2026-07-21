@@ -145,6 +145,8 @@ export type UnifiedReportAreaEntry = {
   sector?: string | null;
   cell?: string | null;
   top_candidates: AreaCandidate[];
+  more_candidates?: AreaCandidate[];
+  total_candidates?: number;
   expanded_candidate?: UnifiedReportPointEntry;
 };
 
