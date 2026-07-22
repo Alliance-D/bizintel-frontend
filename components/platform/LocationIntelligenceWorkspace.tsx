@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
+import { BUSINESS_CATEGORIES } from "@/lib/categories";
+import { catLabel, catTitle } from "@/lib/report-format";
 import {
   getBestBusinessForArea,
   getCompetitionAnalysis,
@@ -414,7 +415,7 @@ export function LocationIntelligenceWorkspace() {
   function reportParams() {
     if (!selectedZone) return "";
     return new URLSearchParams({
-      label: `${selectedZone.area} for ${categoryLabel(category)}`,
+      label: `${selectedZone.area} for ${catTitle(category, t)}`,
       category,
       lat: String(selectedZone.latitude),
       lon: String(selectedZone.longitude),
@@ -431,7 +432,7 @@ export function LocationIntelligenceWorkspace() {
     <main className="workspace-root">
       <section className="workspace-toolbar" aria-label="Location intelligence controls">
         <div className="workspace-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchArea(); }} placeholder={t("search_placeholder")} /></div>
-        <select value={category} onChange={(event) => setCategory(event.target.value as BusinessCategoryKey)} className="workspace-select" aria-label="Business category">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>
+        <select value={category} onChange={(event) => setCategory(event.target.value as BusinessCategoryKey)} className="workspace-select" aria-label="Business category">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{catTitle(item.key, t)}</option>)}</select>
         <button onClick={() => mapRef.current?.fitBounds(KIGALI_BOUNDS, { padding: { top: 40, bottom: 40, left: 330, right: 390 }, duration: 700 })} className="workspace-icon-button" aria-label={t("recenter_map")}><LocateFixed size={18} /></button>
         <button onClick={loadZones} className="workspace-icon-button" aria-label={t("refresh_layer")}><RefreshCw size={18} /></button>
       </section>
@@ -470,7 +471,7 @@ export function LocationIntelligenceWorkspace() {
                 <div>
                   <div className="kicker">{t("selected_area")}</div>
                   <h2>{selectedZone.area}</h2>
-                  <p>{selectedZone.district}{selectedZone.sector ? ` · ${selectedZone.sector}` : ""} · {categoryLabel(category)}</p>
+                  <p>{selectedZone.district}{selectedZone.sector ? ` · ${selectedZone.sector}` : ""} · {catTitle(category, t)}</p>
                 </div>
                 <div className={`score-badge ${scoreClass(selectedZone.opportunity)}`}>
                   <strong>{Math.round(selectedZone.opportunity)}</strong>
@@ -512,7 +513,7 @@ export function LocationIntelligenceWorkspace() {
                         <span><strong>{Number(competitionDetails.competitors.within_1000m || 0)}</strong><small>{t("within_1km")}</small></span>
                       </div>
                       {competitionDetails.competitors.nearest_competitor_m != null && <p>{t("nearest_competitor_text").replace("{distance}", String(Math.round(Number(competitionDetails.competitors.nearest_competitor_m))))}</p>}
-                      {!!competitionDetails.nearby_complementary_and_demand_generators?.length && <p>{t("nearby_anchors_text")}: {competitionDetails.nearby_complementary_and_demand_generators.slice(0, 4).map((item: any) => `${categoryLabel(item.category_key)} (${item.count})`).join(", ")}</p>}
+                      {!!competitionDetails.nearby_complementary_and_demand_generators?.length && <p>{t("nearby_anchors_text")}: {competitionDetails.nearby_complementary_and_demand_generators.slice(0, 4).map((item: any) => `${catLabel(item.category_key, t)} (${item.count})`).join(", ")}</p>}
                     </div>
                   )}
                   {bestBusiness.length > 0 && (
@@ -522,7 +523,7 @@ export function LocationIntelligenceWorkspace() {
                         {bestBusiness.slice(0, 5).map((item: any, index: number) => (
                           <div key={item.business_category} className="best-fit-row">
                             <span>{index + 1}</span>
-                            <strong>{categoryLabel(item.business_category)}</strong>
+                            <strong>{catTitle(item.business_category, t)}</strong>
                             <em>{Math.round(Number(item.opportunity_score || 0))}</em>
                           </div>
                         ))}

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Loader2, MapPin, Plus, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
-import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
+import { BUSINESS_CATEGORIES } from "@/lib/categories";
+import { catTitle } from "@/lib/report-format";
 import { buildUnifiedReport, getCells, getDistricts, getSectors, type UnifiedReportFormLocation } from "@/lib/platform-api";
 import { useLocale } from "@/lib/locale";
 
@@ -105,7 +106,7 @@ export function StartPage() {
             <div className="flex items-baseline gap-2 text-[13px] font-bold"><span className="font-[var(--display-font)] text-[15px] text-[var(--brand)]">1</span> {t("start_q_business")}</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {BUSINESS_CATEGORIES.map((c) => (
-                <button key={c.key} type="button" className={category === c.key ? "chip-btn on" : "chip-btn"} onClick={() => setCategory(c.key)}>{c.label}</button>
+                <button key={c.key} type="button" className={category === c.key ? "chip-btn on" : "chip-btn"} onClick={() => setCategory(c.key)}>{catTitle(c.key, t)}</button>
               ))}
             </div>
           </div>
@@ -178,7 +179,7 @@ export function StartPage() {
           <div className="mt-4 flex items-center justify-between">
             <div>
               <div className="text-[15px] font-extrabold">Kimironko</div>
-              <div className="mt-0.5 text-[12px] font-semibold text-[var(--muted)]">Gasabo · {categoryLabel(category)}</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-[var(--muted)]">Gasabo · {catTitle(category, t)}</div>
             </div>
             <span className="status-pill status-under"><span className="dot" /> {t("legend_underserved")}</span>
           </div>

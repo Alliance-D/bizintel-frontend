@@ -256,7 +256,7 @@ function SingleLocationReport({ entry, reportLocale }: { entry: UnifiedReportPoi
 }
 
 function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { entry: UnifiedReportAreaEntry; reportId: string; entryIndex: number; reportLocale?: string | null }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState<UnifiedReportPointEntry | null>(entry.expanded_candidate || null);
   const [expandingId, setExpandingId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -272,6 +272,8 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
   }
 
   const cat = catLabel(entry.top_candidates[0]?.business_category || "pharmacy", t).toLowerCase();
+  // Plural of the category noun for the card line ("23 pharmacies supported"); RW uses the singular.
+  const catNoun = locale === "rw" ? cat : catPluralEn(cat);
 
   if (expanded) {
     return (
@@ -304,7 +306,7 @@ function AreaCandidatesPanel({ entry, reportId, entryIndex, reportLocale }: { en
               </div>
               <h3 className="mt-3 font-[var(--display-font)] text-[18px] font-semibold leading-tight">{name}</h3>
               {sub && <div className="mt-0.5 text-[12.5px] text-[var(--muted)]">{sub}</div>}
-              <div className="mt-2.5 text-[13px] text-[var(--ink-soft)]">{t("report_cand_line").replace("{expected}", fmt(cExp, 1)).replace("{observed}", fmt(cObs, 0))}</div>
+              <div className="mt-2.5 text-[13px] text-[var(--ink-soft)]">{t("report_cand_line").replace("{cat}", catNoun).replace("{expected}", fmt(cExp, 1)).replace("{observed}", fmt(cObs, 0))}</div>
               <button type="button" onClick={() => handleExpand(c)} disabled={expandingId === c.grid_id} className="btn-primary mt-5 w-full !py-2.5 text-[14px]">
                 {expandingId === c.grid_id ? <><Loader2 size={14} className="animate-spin" /> {t("report_expanding")}</> : <>{t("report_expand_candidate")} <ArrowRight size={14} /></>}
               </button>

@@ -46,6 +46,13 @@ export function catLabel(key: string | undefined, t: T): string {
   return tk ? t(tk) : categoryLabel(key || "");
 }
 
+// Capitalised display form of the translated category label, for chips,
+// selectors and headings (catLabel returns the lowercase form used in prose).
+export function catTitle(key: string | undefined, t: T): string {
+  const s = catLabel(key, t);
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 // English plural of a category label ("pharmacy" -> "pharmacies"). Kinyarwanda
 // templates don't append a plural suffix, so in RW callers pass the singular
 // label straight through instead of calling this.

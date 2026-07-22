@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BUSINESS_CATEGORIES, categoryLabel } from "@/lib/categories";
+import { BUSINESS_CATEGORIES } from "@/lib/categories";
+import { catLabel, catTitle } from "@/lib/report-format";
 import { getPlatformOpportunityGeoJson } from "@/lib/platform-api";
 import { type AnyObj, PageHeader, StatusCard, InsightBlock, useAsyncData, EmptyDataPanel, safeNumber } from "@/components/platform/pageHelpers";
 import { useLocale } from "@/lib/locale";
@@ -46,7 +47,7 @@ export function InsightsPage() {
   const roomToGrow = features.filter((f) => f.properties?.zone_key === "emerging").length;
   const saturated = features.filter((f) => f.properties?.zone_key === "saturated").length;
   const cards = [
-    { title: t("avg_opportunity"), value: average || t("no_data"), text: t("mean_score_areas").replace("{category}", categoryLabel(category).toLowerCase()) },
+    { title: t("avg_opportunity"), value: average || t("no_data"), text: t("mean_score_areas").replace("{category}", catLabel(category, t)) },
     { title: t("underserved_areas"), value: underserved, text: t("underserved_areas_text") },
     { title: t("saturated_areas"), value: saturated, text: t("saturated_areas_text") },
     { title: t("room_to_grow_areas"), value: roomToGrow, text: t("room_to_grow_areas_text") },
@@ -77,7 +78,7 @@ export function InsightsPage() {
         eyebrow={t("insights_eyebrow")}
         title={t("insights_title")}
         text={t("insights_text")}
-        action={<select value={category} onChange={(e) => setCategory(e.target.value)} className="input-modern min-w-[230px] font-bold">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>}
+        action={<select value={category} onChange={(e) => setCategory(e.target.value)} className="input-modern min-w-[230px] font-bold">{BUSINESS_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{catTitle(item.key, t)}</option>)}</select>}
       />
       <div className="real-data-note mb-5">{t("kigali_intelligence_active")}</div>
       <div className="grid gap-4 md:grid-cols-4">{cards.map((card) => <StatusCard key={card.title} {...card} />)}</div>
